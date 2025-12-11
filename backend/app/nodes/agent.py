@@ -10,6 +10,7 @@ class GenericAgentNode:
         self.profile_id = config.get('profile_id')
         self.system_prompt = config.get('system_prompt', "")
         self.output_schema = config.get('output_schema', [])
+        self.flexible_mode = config.get('flexible_mode', False)
         # Max iterations loop protection
         self.max_iterations = config.get('max_iterations')
         if self.max_iterations:
@@ -50,7 +51,12 @@ class GenericAgentNode:
         # Handle Output Schema (JSON Mode fallback)
         effective_system_prompt = self.system_prompt
         
-        if self.output_schema:
+        if self.flexible_mode:
+            # Flexible Mode: Orchestrator style
+            # We don't enforce a rigid schema, but we demand JSON.
+            effective_system_prompt += "\n\nIMPORTANT: You must output a valid JSON object. The structure depends on your decision (e.g. tool call or final answer). Do not include markdown formatting like ```json. Just raw JSON."
+        elif self.output_schema:
+            # Rigid Schema Mode
             schema_instruction = "\n\nIMPORTANT: You must output a valid JSON object matching this schema:\n{\n"
             for field in self.output_schema:
                 schema_instruction += f'  "{field["name"]}": "{field["type"]} - {field["description"]}",\n'
@@ -80,7 +86,8 @@ class GenericAgentNode:
         
         # Post-process response for Structured Output
         context_update = {}
-        if self.output_schema and response.content:
+        # Parse JSON if schema is requested OR flexible mode is active
+        if (self.output_schema or self.flexible_mode) and response.content:
             try:
                 # Naive JSON extraction (strip markdown if model ignores instruction)
                 content_str = str(response.content).strip()

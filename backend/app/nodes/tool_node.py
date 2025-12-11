@@ -8,7 +8,7 @@ class ToolNode:
         self.node_id = node_id
         self.config = config or {}
         
-    def __call__(self, state: GraphState) -> Dict[str, Any]:
+    async def __call__(self, state: GraphState) -> Dict[str, Any]:
         """
         Executes tool calls from the last message.
         """
@@ -27,12 +27,12 @@ class ToolNode:
             tool_args = tool_call['args']
             tool_call_id = tool_call['id']
             
-            tool_instance = get_tool(tool_name)
+            tool_instance = await get_tool(tool_name)
             
             if tool_instance:
                 try:
-                    # Execute tool
-                    output = tool_instance.invoke(tool_args)
+                    # Execute tool - prefer async invoke
+                    output = await tool_instance.ainvoke(tool_args)
                 except Exception as e:
                     output = f"Error executing tool {tool_name}: {str(e)}"
             else:

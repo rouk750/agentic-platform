@@ -19,7 +19,7 @@ export default function DashboardPage() {
             setFlows(data);
             setRetryCount(0);
             setLoading(false);
-        } catch (error) {
+        } catch (_error) {
             console.error(`Failed to load flows (Attempt ${retries + 1}/6)`);
 
             if (retries < 5) {

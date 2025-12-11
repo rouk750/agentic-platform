@@ -190,7 +190,7 @@ export function SmartNodeConfigDialog({ open, onOpenChange, data, onUpdate }: Sm
 
         // Simple CSV splitter handling quotes
         const splitCSV = (line: string) => {
-            const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
+            // const matches = line.match(/(".*?"|[^",\s]+)(?=\s*,|\s*$)/g) || [];
             // Fallback simplistic split if regex fails or too complex, 
             // but for now let's use a simpler approach for standard CSV:
             // "val1","val2" or val1,val2
@@ -232,7 +232,6 @@ export function SmartNodeConfigDialog({ open, onOpenChange, data, onUpdate }: Sm
         const columnMapping = headers.map(h => mapHeaderToKey(h || ""));
 
         const newExamples = [];
-        let skipped = 0;
 
         for (let i = 1; i < lines.length; i++) {
             const row = splitCSV(lines[i]);
@@ -256,7 +255,7 @@ export function SmartNodeConfigDialog({ open, onOpenChange, data, onUpdate }: Sm
                 outputKeys.forEach((k: any) => { if (!example.outputs[k]) example.outputs[k] = ""; });
                 newExamples.push(example);
             } else {
-                skipped++;
+                // skipped++;
             }
         }
 
@@ -556,7 +555,7 @@ export function SmartNodeConfigDialog({ open, onOpenChange, data, onUpdate }: Sm
                                             {examples.length === 0 && (
                                                 <tr>
                                                     <td colSpan={4} className="p-8 text-center text-slate-400 italic">
-                                                        No examples yet. Click "Add Example" to start teaching your node.
+                                                        No examples yet. Click &quot;Add Example&quot; to start teaching your node.
                                                     </td>
                                                 </tr>
                                             )}

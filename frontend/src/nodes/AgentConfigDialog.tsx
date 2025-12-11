@@ -24,6 +24,7 @@ type FormData = {
     system_prompt: string;
     max_iterations: number;
     output_schema: SchemaField[];
+    flexible_mode: boolean;
 };
 
 export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentConfigDialogProps) {
@@ -32,7 +33,8 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
             modelId: data.modelId ? String(data.modelId) : "",
             system_prompt: data.system_prompt || "",
             max_iterations: data.max_iterations || 0,
-            output_schema: data.output_schema || []
+            output_schema: data.output_schema || [],
+            flexible_mode: data.flexible_mode || false
         }
     });
 
@@ -57,6 +59,7 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
             setValue('system_prompt', data.system_prompt || "");
             setValue('max_iterations', data.max_iterations || 0);
             setValue('output_schema', data.output_schema || []);
+            setValue('flexible_mode', data.flexible_mode || false);
             setSelectedTools(data.tools || []);
         }
     }, [open, data, setValue]);
@@ -68,7 +71,8 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
             system_prompt: formData.system_prompt,
             max_iterations: Number(formData.max_iterations),
             tools: selectedTools,
-            output_schema: formData.output_schema
+            output_schema: formData.output_schema,
+            flexible_mode: formData.flexible_mode
         };
 
         if (selectedModel) {
@@ -86,6 +90,8 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
             toast.success("Agent configuration saved");
         }
     };
+
+    const isFlexible = watch('flexible_mode');
 
     return (
         <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -168,60 +174,82 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
                                         Define keys to force the agent to output structured data into the Context.
                                     </p>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => append({ name: '', description: '', type: 'string' })}
-                                    className="text-xs flex items-center gap-1 text-purple-600 hover:text-purple-700 font-medium px-2 py-1 bg-purple-50 hover:bg-purple-100 rounded transition-colors"
-                                >
-                                    <Plus size={14} /> Add Field
-                                </button>
+                                {!isFlexible && (
+                                    <button
+                                        type="button"
+                                        onClick={() => append({ name: '', description: '', type: 'string' })}
+                                        className="text-xs flex items-center gap-1 text-purple-600 hover:text-purple-700 font-medium px-2 py-1 bg-purple-50 hover:bg-purple-100 rounded transition-colors"
+                                    >
+                                        <Plus size={14} /> Add Field
+                                    </button>
+                                )}
                             </div>
 
-                            <div className="space-y-2">
-                                {fields.length === 0 && (
-                                    <div className="text-center py-4 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 text-xs">
-                                        No schema defined. Agent returns plain text.
-                                    </div>
-                                )}
-                                {fields.map((field, index) => (
-                                    <div key={field.id} className="flex items-start gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg">
-                                        <div className="flex-1 grid grid-cols-12 gap-2">
-                                            <div className="col-span-4">
-                                                <input
-                                                    {...register(`output_schema.${index}.name` as const)}
-                                                    placeholder="Key Name (e.g. sentiment)"
-                                                    className="w-full text-xs p-1.5 rounded border border-slate-300 focus:border-purple-500 outline-none"
-                                                />
-                                            </div>
-                                            <div className="col-span-3">
-                                                <select
-                                                    {...register(`output_schema.${index}.type` as const)}
-                                                    className="w-full text-xs p-1.5 rounded border border-slate-300 bg-white focus:border-purple-500 outline-none"
-                                                >
-                                                    <option value="string">String</option>
-                                                    <option value="number">Number</option>
-                                                    <option value="boolean">Boolean</option>
-                                                    <option value="array">Array</option>
-                                                </select>
-                                            </div>
-                                            <div className="col-span-5">
-                                                <input
-                                                    {...register(`output_schema.${index}.description` as const)}
-                                                    placeholder="Description..."
-                                                    className="w-full text-xs p-1.5 rounded border border-slate-300 focus:border-purple-500 outline-none"
-                                                />
-                                            </div>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            onClick={() => remove(index)}
-                                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                                        >
-                                            <Trash2 size={14} />
-                                        </button>
-                                    </div>
-                                ))}
+                            {/* Flexible Mode Toggle */}
+                            <div className="flex items-center gap-2 mb-2 px-1">
+                                <input
+                                    type="checkbox"
+                                    id="flexible_mode"
+                                    {...register('flexible_mode')}
+                                    className="rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                                />
+                                <label htmlFor="flexible_mode" className="text-sm text-slate-700 font-medium cursor-pointer">
+                                    Flexible JSON (Orchestrator Mode)
+                                </label>
                             </div>
+
+                            {isFlexible ? (
+                                <div className="p-3 bg-purple-50 border border-purple-100 rounded-lg text-xs text-purple-700">
+                                    <strong>Orchestrator Mode Active:</strong> Use your System Prompt to define the different JSON structures the agent can return (e.g. <code>{"{"}type: "search", ...{"}"}</code> vs <code>{"{"}type: "answer", ...{"}"}</code>).
+                                    <br />The agent will output raw JSON without a forced schema validation loop.
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {fields.length === 0 && (
+                                        <div className="text-center py-4 border-2 border-dashed border-slate-200 rounded-lg text-slate-400 text-xs">
+                                            No schema defined. Agent returns plain text.
+                                        </div>
+                                    )}
+                                    {fields.map((field, index) => (
+                                        <div key={field.id} className="flex items-start gap-2 p-2 bg-slate-50 border border-slate-200 rounded-lg">
+                                            <div className="flex-1 grid grid-cols-12 gap-2">
+                                                <div className="col-span-4">
+                                                    <input
+                                                        {...register(`output_schema.${index}.name` as const)}
+                                                        placeholder="Key Name (e.g. sentiment)"
+                                                        className="w-full text-xs p-1.5 rounded border border-slate-300 focus:border-purple-500 outline-none"
+                                                    />
+                                                </div>
+                                                <div className="col-span-3">
+                                                    <select
+                                                        {...register(`output_schema.${index}.type` as const)}
+                                                        className="w-full text-xs p-1.5 rounded border border-slate-300 bg-white focus:border-purple-500 outline-none"
+                                                    >
+                                                        <option value="string">String</option>
+                                                        <option value="number">Number</option>
+                                                        <option value="boolean">Boolean</option>
+                                                        <option value="array">Array</option>
+                                                    </select>
+                                                </div>
+                                                <div className="col-span-5">
+                                                    <input
+                                                        {...register(`output_schema.${index}.description` as const)}
+                                                        placeholder="Description..."
+                                                        className="w-full text-xs p-1.5 rounded border border-slate-300 focus:border-purple-500 outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => remove(index)}
+                                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                                            >
+                                                <Trash2 size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
                         {/* Footer */}

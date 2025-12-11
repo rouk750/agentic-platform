@@ -2,15 +2,8 @@
   "mcpServers": {
     "filesystem": {
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./"],
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "./", "/Users/faroukbelhadj/Desktop", "/Users/faroukbelhadj"],
       "env": {}
-    },
-    "example-remote": {
-      "url": "http://localhost:8000/sse",
-      "headers": {
-        "Authorization": "Bearer key"
-      },
-      "disabled": true
     }
   }
 }

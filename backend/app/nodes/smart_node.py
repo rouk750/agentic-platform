@@ -105,19 +105,32 @@ class SmartNode:
             
         # 6. Map Outputs
         outputs = {}
+        primary_output_content = ""
+        
         for out in self.outputs:
             key = out["name"]
             if hasattr(result, key):
-                outputs[key] = getattr(result, key)
+                val = getattr(result, key)
+                outputs[key] = val
+                # Heuristic: The first output or one named 'output' is the primary content
+                if not primary_output_content:
+                    primary_output_content = str(val)
+                elif key == "output":
+                     primary_output_content = str(val)
                 
         # Optional: Add rationale if ChainOfThought
         if hasattr(result, "rationale"):
             outputs["_rationale"] = result.rationale
             
         # Return state update. 
-        # Usually we update a specific key or append a message.
-        # SmartNode is generic -> it updates keys in state.
-        return outputs
+        from langchain_core.messages import AIMessage
+        
+        # Create an AIMessage so Routers and other nodes can see what happened "conversationally"
+        # If no output, we still might want to say something or empty.
+        ai_msg = AIMessage(content=primary_output_content, name=self.node_id)
+        
+        # SmartNode is generic -> it updates keys in state AND appends a message
+        return {**outputs, "messages": [ai_msg], "last_sender": self.node_id}
 
     def __call__(self, state):
         import asyncio

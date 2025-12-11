@@ -1,6 +1,6 @@
 
 import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
-import { Sparkles, Settings2, Brain, Zap, Key } from 'lucide-react';
+import { Sparkles, Settings2, Brain, Zap } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { useState } from 'react';
 import { useRunStore } from '../store/runStore';
@@ -62,7 +62,7 @@ export function SmartNode({ id, data, selected }: NodeProps) {
                 <div className="p-3">
                     {/* Goal/Instructions Snippet */}
                     <div className="text-xs text-slate-600 italic border-l-2 border-amber-200 pl-2 py-1 mb-3 bg-slate-50/50 rounded-r">
-                        "{String(data.goal || 'Define a goal...')}"
+                        &quot;{String(data.goal || 'Define a goal...')}&quot;
                     </div>
 
                     {/* Signature Viz */}

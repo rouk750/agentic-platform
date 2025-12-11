@@ -48,21 +48,26 @@ async def load_tools():
             print(f"Error loading module {full_module_name}: {e}")
 
     # 2. Load MCP Tools
-    if _MCP_MANAGER is None:
-        _MCP_MANAGER = MCPClientManager()
-        await _MCP_MANAGER.initialize()
-        
-    mcp_tools = _MCP_MANAGER.get_all_tools()
-    for tool_data in mcp_tools:
-        try:
-            wrapper = MCPLangChainTool(
-                client_manager=_MCP_MANAGER,
-                server_name=tool_data['server_name'],
-                tool_data=tool_data
-            )
-            _TOOL_REGISTRY[wrapper.name] = wrapper
-        except Exception as e:
-            print(f"Failed to wrap MCP tool {tool_data.get('name')}: {e}")
+    # 2. Load MCP Tools
+    try:
+        if _MCP_MANAGER is None:
+            _MCP_MANAGER = MCPClientManager()
+            await _MCP_MANAGER.initialize()
+            
+        mcp_tools = _MCP_MANAGER.get_all_tools()
+        for tool_data in mcp_tools:
+            try:
+                wrapper = MCPLangChainTool(
+                    client_manager=_MCP_MANAGER,
+                    server_name=tool_data['server_name'],
+                    tool_data=tool_data
+                )
+                _TOOL_REGISTRY[wrapper.name] = wrapper
+            except Exception as e:
+                print(f"Failed to wrap MCP tool {tool_data.get('name')}: {e}")
+    except Exception as e:
+        print(f"Warning: Failed to initialize/load MCP tools: {e}")
+        # Continue so local tools are still available
 
     print(f"Loaded tools: {list(_TOOL_REGISTRY.keys())}")
 

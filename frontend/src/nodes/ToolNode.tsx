@@ -1,9 +1,9 @@
-import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
-import { Wrench, Settings2 } from 'lucide-react';
+import { Handle, Position, NodeProps } from '@xyflow/react';
+import { Wrench } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { useRunStore } from '../store/runStore';
 
-export function ToolNode({ id, selected, data }: NodeProps) {
+export function ToolNode({ id, selected }: NodeProps) {
     const activeNodeId = useRunStore((state) => state.activeNodeId);
     const isActive = id === activeNodeId;
 
