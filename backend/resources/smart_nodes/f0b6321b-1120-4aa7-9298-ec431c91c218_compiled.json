@@ -1,0 +1,63 @@
+{
+  "traces": [],
+  "train": [],
+  "demos": [
+    {
+      "augmented": true,
+      "avis_consommateur": "Super achat, ma fille adore sa nouvelle poupée.",
+      "sentiment": "positif"
+    },
+    {
+      "augmented": true,
+      "avis_consommateur": "Le plastique fait vraiment bas de gamme, ça grince quand on appuie.",
+      "sentiment": "négatif"
+    },
+    {
+      "augmented": true,
+      "avis_consommateur": "Commandé le 12, reçu le 14.",
+      "sentiment": "neutre"
+    },
+    {
+      "augmented": true,
+      "avis_consommateur": "Recette de crêpes : 250g de farine, 4 oeufs, 1/2 litre de lait.",
+      "sentiment": "non_pertinent"
+    },
+    {
+      "avis_consommateur": "Correct, mais la livraison était payante alors qu'indiquée gratuite.",
+      "sentiment": "mitigé"
+    },
+    {
+      "avis_consommateur": "Le goût est bizarre, chimique.",
+      "sentiment": "négatif"
+    },
+    {
+      "avis_consommateur": "C'est pour offrir, j'espère que ça plaira.",
+      "sentiment": "neutre"
+    },
+    {
+      "avis_consommateur": "C'est mon deuxième achat chez vous et je suis toujours ravi.",
+      "sentiment": "positif"
+    }
+  ],
+  "signature": {
+    "instructions": "Agis comme un analyste de comportement consommateur. Je vais te soumettre un texte et je souhaite que tu en fasses une analyse de sentiment approfondie.\nVoici les points que tu dois traiter :\nSentiment Global : Est-ce Positif, Négatif ou Neutre ?\nIntensité : Le sentiment est-il faible, modéré ou fort ?\nPoints de friction ou de satisfaction : Qu'est-ce qui a provoqué ce sentiment ? (Cite des passages du texte).\nIronie/Sarcasme : Détectes-tu de l'ironie qui inverserait le sens littéral des mots ? Si oui, explique.",
+    "fields": [
+      {
+        "prefix": "Avis Consommateur:",
+        "description": "avis consommateur exprimant son avis sur le produit ou le service"
+      },
+      {
+        "prefix": "Sentiment:",
+        "description": "le sentiment analysé par le modèle"
+      }
+    ]
+  },
+  "lm": null,
+  "metadata": {
+    "dependency_versions": {
+      "python": "3.13",
+      "dspy": "3.0.4",
+      "cloudpickle": "3.1"
+    }
+  }
+}
