@@ -159,6 +159,12 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
     except WebSocketDisconnect:
         print(f"Client disconnected {graph_id}")
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         print(f"Error in execution: {e}")
-        await websocket.send_json({"type": "error", "message": str(e)})
+        error_message = str(e)
+        if not error_message:
+            error_message = f"Unknown error ({type(e).__name__})"
+            
+        await websocket.send_json({"type": "error", "message": error_message})
         await websocket.close()

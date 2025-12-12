@@ -1,5 +1,5 @@
 import { Trash2, Bot, Server } from 'lucide-react';
-import { LLMProfile } from '../../api/settings';
+import type { LLMProfile } from '../../types/settings';
 
 interface ModelListProps {
     models: LLMProfile[];

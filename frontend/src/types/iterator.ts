@@ -1,4 +1,4 @@
-import { NodeData } from './common';
+import type { NodeData } from './common';
 
 export interface IteratorNodeData extends NodeData {
     input_list_variable?: string;

@@ -2,7 +2,7 @@ import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { Message } from '../../store/runStore';
+import type { Message } from '../../types/execution';
 import clsx from 'clsx';
 import { Bot, User, ChevronDown, Wrench } from 'lucide-react';
 import * as Collapsible from '@radix-ui/react-collapsible';

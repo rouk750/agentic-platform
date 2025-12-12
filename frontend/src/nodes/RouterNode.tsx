@@ -1,5 +1,5 @@
-import { Handle, Position, NodeProps, useReactFlow, Node } from '@xyflow/react';
-import { RouterNodeData } from '../types/router';
+import { Handle, Position, useReactFlow, type NodeProps, type Node } from '@xyflow/react';
+import type { RouterNodeData } from '../types/router';
 import { GitFork, Settings2, Info } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { useState } from 'react';

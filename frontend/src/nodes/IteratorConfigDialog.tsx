@@ -1,7 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, RefreshCw } from 'lucide-react';
 import { useState } from 'react';
-import { IteratorNodeData } from '../types/iterator';
+import type { IteratorNodeData } from '../types/iterator';
 
 interface IteratorConfigDialogProps {
     open: boolean;

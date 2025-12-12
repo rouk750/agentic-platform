@@ -4,8 +4,10 @@ import { X, Loader2, Plus, Trash2, Brain, Zap, Sparkles } from 'lucide-react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { getModels, LLMProfile } from '../api/settings';
-import { optimizeNode, getAvailableGuardrails, GuardrailDefinition } from '../api/smartNode';
+import { getModels } from '../api/settings';
+import type { LLMProfile } from '../types/settings';
+import { optimizeNode, getAvailableGuardrails, type GuardrailDefinition } from '../api/smartNode';
+
 
 interface SmartNodeConfigDialogProps {
     open: boolean;

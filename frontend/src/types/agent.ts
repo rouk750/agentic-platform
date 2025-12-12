@@ -1,4 +1,4 @@
-import { SchemaField, NodeData } from './common';
+import type { SchemaField, NodeData } from './common';
 export type { SchemaField };
 
 export interface AgentNodeData extends NodeData {

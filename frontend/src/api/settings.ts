@@ -1,25 +1,9 @@
 import axios from 'axios';
+import type { LLMProfile, LLMProfileCreate } from '../types/settings';
 
 const getBaseUrl = async () => {
     return "http://localhost:8000/api";
 };
-
-export interface LLMProfile {
-    id: number;
-    name: string;
-    provider: 'openai' | 'anthropic' | 'mistral' | 'ollama' | 'azure' | 'lmstudio';
-    model_id: string;
-    base_url?: string;
-    temperature: number;
-}
-
-export interface LLMProfileCreate {
-    name: string;
-    provider: string;
-    model_id: string;
-    api_key?: string;
-    base_url?: string;
-}
 
 export const getModels = async (): Promise<LLMProfile[]> => {
     const baseUrl = await getBaseUrl();

@@ -29,39 +29,11 @@ def get_first_profile() -> LLMProfile | None:
         results = session.exec(statement)
         return results.first()
 
+from app.providers.factory import LLMProviderFactory
+
 def create_llm_instance(profile: LLMProfile):
     api_key = None
     if profile.api_key_ref:
         api_key = get_api_key(profile.api_key_ref)
     
-    if profile.provider == ProviderType.OPENAI:
-        return ChatOpenAI(
-            api_key=api_key, 
-            model=profile.model_id,
-            temperature=profile.temperature,
-            base_url=profile.base_url
-        )
-    elif profile.provider == ProviderType.ANTHROPIC:
-         return ChatAnthropic(
-            api_key=api_key, 
-            model=profile.model_id,
-            temperature=profile.temperature,
-            base_url=profile.base_url
-        )
-    elif profile.provider == ProviderType.OLLAMA:
-        url = profile.base_url or "http://localhost:11434"
-        return ChatOllama(
-            model=profile.model_id,
-            temperature=profile.temperature,
-            base_url=url
-        )
-    elif profile.provider == ProviderType.LMSTUDIO:
-        # LM Studio is OpenAI compatible
-        return ChatOpenAI(
-            api_key="lm-studio", # not used but required by library
-            model=profile.model_id,
-            temperature=profile.temperature,
-            base_url=profile.base_url or "http://localhost:1234/v1"
-        )
-    
-    raise ValueError(f"Unsupported provider {profile.provider}")
+    return LLMProviderFactory.create(profile, api_key)

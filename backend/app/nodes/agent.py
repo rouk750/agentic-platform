@@ -93,7 +93,15 @@ class GenericAgentNode:
                      print(f"Warning: Tool {name} not found in registry.")
              
              if tools_to_bind:
-                 llm = llm.bind_tools(tools_to_bind)
+                 try:
+                     llm = llm.bind_tools(tools_to_bind)
+                 except NotImplementedError:
+                     raise ValueError(f"The selected provider ({profile.provider}) or library version does not support tool calling (bind_tools). Please install 'langchain-ollama' or use a different provider.")
+                 except Exception as e:
+                     print(f"Error binding tools: {e}")
+                     # Continue without tools? or raise?
+                     # Raising is better to avoid silent failure
+                     raise ValueError(f"Failed to bind tools to LLM: {str(e)}")
             
         response = await llm.ainvoke(invocation_messages)
         

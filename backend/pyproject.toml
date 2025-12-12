@@ -28,6 +28,9 @@ aiosqlite = "^0.21.0"
 langgraph-checkpoint-sqlite = "^3.0.1"
 mcp = "^1.23.3"
 dspy = "^3.0.4"
+langchain-ollama = "^1.0.0"
+langchain-aws = "^1.1.0"
+langchain-mistralai = "^1.1.0"
 
 
 

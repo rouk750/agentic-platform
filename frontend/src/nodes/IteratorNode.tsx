@@ -1,6 +1,6 @@
 import { memo, useState } from 'react';
-import { Handle, Position, NodeProps, useReactFlow, Node } from '@xyflow/react';
-import { IteratorNodeData } from '../types/iterator';
+import { Handle, Position, useReactFlow, type NodeProps, type Node } from '@xyflow/react';
+import type { IteratorNodeData } from '../types/iterator';
 import { RefreshCw, Settings2, Info } from 'lucide-react';
 import { IteratorConfigDialog } from './IteratorConfigDialog';
 import { TechnicalInfoDialog } from './TechnicalInfoDialog';

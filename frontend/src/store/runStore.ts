@@ -1,32 +1,5 @@
 import { create } from 'zustand';
-
-export type MessageType = 'user' | 'ai' | 'tool' | 'trace';
-
-export interface Message {
-  id: string;
-  role: MessageType;
-  content: string;
-  name?: string; // Logged sender name
-  nodeId?: string | null; // ID of the node that generated this message
-  timestamp: number;
-  toolDetails?: {
-    name: string;
-    input: string;
-    output?: string;
-  };
-  traceDetails?: {
-    nodeId: string;
-    input: string;
-    count: number;
-  };
-}
-
-export interface LogEntry {
-  timestamp: number;
-  event: string;
-  details: any;
-  level: 'info' | 'error' | 'warn';
-}
+import type { Message, LogEntry } from '../types/execution';
 
 interface RunState {
   status: 'idle' | 'connecting' | 'running' | 'error' | 'done';
