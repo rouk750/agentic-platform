@@ -1,18 +1,23 @@
-import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
-import { GitFork, Settings2 } from 'lucide-react';
+import { Handle, Position, NodeProps, useReactFlow, Node } from '@xyflow/react';
+import { RouterNodeData } from '../types/router';
+import { GitFork, Settings2, Info } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { useState } from 'react';
 import { useRunStore } from '../store/runStore';
 import { RouterConfigDialog } from './RouterConfigDialog';
+import { TechnicalInfoDialog } from './TechnicalInfoDialog';
 
-export function RouterNode({ id, selected, data }: NodeProps) {
+type RouterNodeType = Node<RouterNodeData>;
+
+export function RouterNode({ id, selected, data }: NodeProps<RouterNodeType>) {
     const { updateNodeData } = useReactFlow();
     const activeNodeId = useRunStore((state) => state.activeNodeId);
     const isActive = id === activeNodeId;
     const [configOpen, setConfigOpen] = useState(false);
+    const [infoOpen, setInfoOpen] = useState(false);
 
     // Ensure routes array exists
-    const routes = (data.routes as any[]) || [];
+    const routes = data.routes || [];
 
     return (
         <>
@@ -33,18 +38,31 @@ export function RouterNode({ id, selected, data }: NodeProps) {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                        <div className="font-bold text-slate-800 text-sm">Logic Router</div>
+                        <input
+                            className="font-bold text-slate-800 bg-transparent border-none p-0 focus:ring-0 w-full text-sm truncate placeholder:text-slate-400"
+                            value={String(data.label || "Logic Router")}
+                            onChange={(e) => updateNodeData(id, { label: e.target.value })}
+                            placeholder="Router Name"
+                        />
                         <div className="text-[10px] text-slate-400 font-medium">
                             {routes.length} Active Routes
                         </div>
                     </div>
 
-                    <button
-                        onClick={() => setConfigOpen(true)}
-                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
-                    >
-                        <Settings2 size={16} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setInfoOpen(true)}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                        >
+                            <Info size={16} />
+                        </button>
+                        <button
+                            onClick={() => setConfigOpen(true)}
+                            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
+                        >
+                            <Settings2 size={16} />
+                        </button>
+                    </div>
                 </div>
 
                 <Handle
@@ -92,6 +110,12 @@ export function RouterNode({ id, selected, data }: NodeProps) {
                 onOpenChange={setConfigOpen}
                 data={data}
                 onUpdate={(updates) => updateNodeData(id, updates)}
+            />
+
+            <TechnicalInfoDialog
+                open={infoOpen}
+                onOpenChange={setInfoOpen}
+                data={{ ...data, id }}
             />
         </>
     );

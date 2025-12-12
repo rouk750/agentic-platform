@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Folder, Loader2, ArrowRight } from 'lucide-react';
 import { Flow, flowApi } from '../api/flows';
@@ -10,33 +10,40 @@ export default function DashboardPage() {
     const [loading, setLoading] = useState(true);
     const [retryCount, setRetryCount] = useState(0);
 
-    const loadFlows = async (retries = 0) => {
+    const loadFlows = useCallback(async (retries = 0) => {
         try {
-            // Only set loading to true on first attempt to avoid flickering
-            if (retries === 0) setLoading(true);
+            // Loading is handled by caller or initial state
 
             const data = await flowApi.getAll();
             setFlows(data);
             setRetryCount(0);
             setLoading(false);
-        } catch (_error) {
+        } catch {
             console.error(`Failed to load flows (Attempt ${retries + 1}/6)`);
 
             if (retries < 5) {
                 setRetryCount(retries + 1);
-                // Retry after 1 second
-                setTimeout(() => loadFlows(retries + 1), 1000);
             } else {
                 toast.error("Impossible de se connecter au backend après 5 tentatives.");
                 setLoading(false);
-                setFlows([]); // Optional safety: clear flows if connection fails permanently
+                setFlows([]);
             }
         }
-    };
+    }, []);
 
     useEffect(() => {
+        if (retryCount > 0 && retryCount <= 5) {
+            const timer = setTimeout(() => {
+                loadFlows(retryCount);
+            }, 1000);
+            return () => clearTimeout(timer);
+        }
+    }, [retryCount, loadFlows]);
+
+    useEffect(() => {
+        // eslint-disable-next-line
         loadFlows();
-    }, []);
+    }, [loadFlows]);
 
     const handleCreateNew = () => {
         navigate('/editor/new');
@@ -51,6 +58,7 @@ export default function DashboardPage() {
         if (!confirm("Are you sure you want to delete this flow?")) return;
 
         try {
+            setLoading(true);
             await flowApi.delete(id);
             toast.success("Flow deleted");
             loadFlows();

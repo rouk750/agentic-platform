@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRunStore } from '../../store/runStore';
 import { useAgentRuntime } from '../../hooks/useAgentRuntime';
 import { ChatMessage } from './ChatMessage';
-import { Play, Square, Eraser, Loader2, Send } from 'lucide-react';
+import { Play, Square, Eraser, Loader2 } from 'lucide-react';
 import { useGraphStore } from '../../store/graphStore';
 import clsx from 'clsx';
 // Wait, I need to check where useGraphStore is. Assuming standard path.

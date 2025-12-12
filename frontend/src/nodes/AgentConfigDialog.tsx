@@ -5,19 +5,17 @@ import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { getModels, LLMProfile } from '../api/settings';
 import { ToolSelector } from './ToolSelector';
+import { AgentNodeData } from '../types/agent';
+import { SchemaField } from '../types/common';
 
 interface AgentConfigDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    data: any;
-    onUpdate: (data: any) => void;
+    data: AgentNodeData;
+    onUpdate: (data: Partial<AgentNodeData>) => void;
 }
 
-type SchemaField = {
-    name: string;
-    description: string;
-    type: string;
-};
+
 
 type FormData = {
     modelId: string;
@@ -28,7 +26,7 @@ type FormData = {
 };
 
 export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentConfigDialogProps) {
-    const { register, control, handleSubmit, setValue, watch, reset } = useForm<FormData>({
+    const { register, control, handleSubmit, setValue, watch } = useForm<FormData>({
         defaultValues: {
             modelId: data.modelId ? String(data.modelId) : "",
             system_prompt: data.system_prompt || "",
@@ -67,17 +65,17 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
     const onSubmit = (formData: FormData, shouldClose: boolean = true) => {
         const selectedModel = models.find(m => String(m.id) === formData.modelId);
 
-        const updates: any = {
+        const updates: Partial<AgentNodeData> = {
             system_prompt: formData.system_prompt,
             max_iterations: Number(formData.max_iterations),
             tools: selectedTools,
-            output_schema: formData.output_schema,
+            output_schema: formData.output_schema as SchemaField[],
             flexible_mode: formData.flexible_mode
         };
 
         if (selectedModel) {
             updates.profile_id = selectedModel.id; // Critical: Backend expects profile_id
-            updates.modelId = selectedModel.id;
+            updates.modelId = String(selectedModel.id);
             updates.modelName = selectedModel.name;
             updates.provider = selectedModel.provider;
             updates.model_id = selectedModel.model_id;
@@ -201,7 +199,7 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
 
                             {isFlexible ? (
                                 <div className="p-3 bg-purple-50 border border-purple-100 rounded-lg text-xs text-purple-700">
-                                    <strong>Orchestrator Mode Active:</strong> Use your System Prompt to define the different JSON structures the agent can return (e.g. <code>{"{"}type: "search", ...{"}"}</code> vs <code>{"{"}type: "answer", ...{"}"}</code>).
+                                    <strong>Orchestrator Mode Active:</strong> Use your System Prompt to define the different JSON structures the agent can return (e.g. <code>{"{"}type: &quot;search&quot;, ...{"}"}</code> vs <code>{"{"}type: &quot;answer&quot;, ...{"}"}</code>).
                                     <br />The agent will output raw JSON without a forced schema validation loop.
                                 </div>
                             ) : (

@@ -3,13 +3,15 @@ from langchain_core.messages import ToolMessage
 from app.engine.state import GraphState
 from app.services.tool_registry import list_tools_metadata, get_tool
 
+from langchain_core.runnables import RunnableConfig
+
 class ToolNode:
     def __init__(self, node_id: str, config: dict = None):
         self.node_id = node_id
         self.config = config or {}
         self.label = self.config.get("label", "Tool Node")
         
-    async def __call__(self, state: GraphState) -> Dict[str, Any]:
+    async def __call__(self, state: GraphState, config: RunnableConfig) -> Dict[str, Any]:
         """
         Executes tool calls from the last message.
         """
@@ -33,7 +35,7 @@ class ToolNode:
             if tool_instance:
                 try:
                     # Execute tool - prefer async invoke
-                    output = await tool_instance.ainvoke(tool_args)
+                    output = await tool_instance.ainvoke(tool_args, config=config)
                 except Exception as e:
                     output = f"Error executing tool {tool_name}: {str(e)}"
             else:

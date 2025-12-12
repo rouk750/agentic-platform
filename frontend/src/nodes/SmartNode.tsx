@@ -1,20 +1,25 @@
 
-import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
-import { Sparkles, Settings2, Brain, Zap } from 'lucide-react';
+import { Handle, Position, NodeProps, useReactFlow, Node } from '@xyflow/react';
+import { SmartNodeConfigDialog } from './SmartNodeConfigDialog';
+import { TechnicalInfoDialog } from './TechnicalInfoDialog';
+import { Sparkles, Settings2, Brain, Zap, Info } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { useState } from 'react';
 import { useRunStore } from '../store/runStore';
-import { SmartNodeConfigDialog } from './SmartNodeConfigDialog';
+import { SmartNodeData, SmartNodeMode } from '../types/smartNode';
 
-export function SmartNode({ id, data, selected }: NodeProps) {
+type SmartNodeType = Node<SmartNodeData>;
+
+export function SmartNode({ id, data, selected }: NodeProps<SmartNodeType>) {
     const { updateNodeData } = useReactFlow();
     const activeNodeId = useRunStore((state) => state.activeNodeId);
     const isActive = id === activeNodeId;
     const [configOpen, setConfigOpen] = useState(false);
+    const [infoOpen, setInfoOpen] = useState(false);
 
-    const mode = data.mode as string || "ChainOfThought"; // Default
-    const inputs = (data.inputs as any[]) || [];
-    const outputs = (data.outputs as any[]) || [];
+    const mode = (data.mode as SmartNodeMode) || "ChainOfThought"; // Default
+    const inputs = data.inputs || [];
+    const outputs = data.outputs || [];
 
     return (
         <>
@@ -50,18 +55,30 @@ export function SmartNode({ id, data, selected }: NodeProps) {
                         </div>
                     </div>
 
-                    <button
-                        onClick={() => setConfigOpen(true)}
-                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
-                    >
-                        <Settings2 size={16} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setInfoOpen(true)}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                            title="Technical Info"
+                        >
+                            <Info size={16} />
+                        </button>
+                        <button
+                            onClick={() => setConfigOpen(true)}
+                            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
+                        >
+                            <Settings2 size={16} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Body Summary */}
                 <div className="p-3">
                     {/* Goal/Instructions Snippet */}
-                    <div className="text-xs text-slate-600 italic border-l-2 border-amber-200 pl-2 py-1 mb-3 bg-slate-50/50 rounded-r">
+                    <div
+                        className="text-xs text-slate-600 italic border-l-2 border-amber-200 pl-2 py-1 mb-3 bg-slate-50/50 rounded-r line-clamp-3 overflow-hidden text-ellipsis"
+                        title={String(data.goal || '')}
+                    >
                         &quot;{String(data.goal || 'Define a goal...')}&quot;
                     </div>
 
@@ -72,7 +89,7 @@ export function SmartNode({ id, data, selected }: NodeProps) {
                                 Inputs
                             </div>
                             <div className="flex flex-col gap-0.5 text-slate-700">
-                                {inputs.length > 0 ? inputs.map((i: any, idx) => (
+                                {inputs.length > 0 ? inputs.map((i, idx) => (
                                     <span key={idx} className="truncate">• {i.name}</span>
                                 )) : <span className="text-slate-400 opacity-50">None</span>}
                             </div>
@@ -85,7 +102,7 @@ export function SmartNode({ id, data, selected }: NodeProps) {
                                 Outputs
                             </div>
                             <div className="flex flex-col gap-0.5 text-slate-700">
-                                {outputs.length > 0 ? outputs.map((o: any, idx) => (
+                                {outputs.length > 0 ? outputs.map((o, idx) => (
                                     <span key={idx} className="truncate">• {o.name}</span>
                                 )) : <span className="text-slate-400 opacity-50">None</span>}
                             </div>
@@ -115,6 +132,12 @@ export function SmartNode({ id, data, selected }: NodeProps) {
                 onOpenChange={setConfigOpen}
                 data={{ ...data, id }}
                 onUpdate={(updates) => updateNodeData(id, updates)}
+            />
+
+            <TechnicalInfoDialog
+                open={infoOpen}
+                onOpenChange={setInfoOpen}
+                data={{ ...data, id }}
             />
         </>
     );
