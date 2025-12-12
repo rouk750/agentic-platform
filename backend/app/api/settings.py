@@ -73,31 +73,29 @@ from pydantic import BaseModel
 @router.post("/test-connection")
 async def test_connection(request: TestConnectionRequest):
     try:
-        if request.provider == "openai":
-            llm = ChatOpenAI(api_key=request.api_key, model=request.model_id, max_tokens=5)
-            await llm.ainvoke("test")
-        elif request.provider == "anthropic":
-            llm = ChatAnthropic(api_key=request.api_key, model=request.model_id, max_tokens=5)
-            await llm.ainvoke("test")
-        elif request.provider == "ollama":
-            # For Ollama, we might check if we can reach the tag endpoint or chat
-            # Simple check via httpx
-            base_url = request.base_url or "http://localhost:11434"
-            async with httpx.AsyncClient() as client:
-                resp = await client.get(f"{base_url}/api/tags")
-                resp.raise_for_status()
-        elif request.provider == "lmstudio":
-            # For LM Studio, it's openAI compatible.
-            # We can try to list models or complete
-            base_url = request.base_url or "http://localhost:1234/v1"
-            llm = ChatOpenAI(api_key="lm-studio", model=request.model_id, base_url=base_url)
-            await llm.ainvoke("test")
-        else:
-             # Basic fallback or error for unknown providers
-             pass
-             
+        # Create a temporary profile object
+        # We need to map the string provider to the Enum.
+        try:
+            provider_type = ProviderType(request.provider)
+        except ValueError:
+            raise HTTPException(status_code=400, detail=f"Unknown provider {request.provider}")
+
+        temp_profile = LLMProfile(
+             name="temp",
+             provider=provider_type,
+             model_id=request.model_id,
+             base_url=request.base_url,
+             temperature=0.0
+        )
+        
+        from app.providers.factory import LLMProviderFactory
+        provider = LLMProviderFactory.get_provider(provider_type)
+        await provider.test_connection(temp_profile, api_key=request.api_key)
+
         return {"status": "ok"}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/providers/ollama/scan")

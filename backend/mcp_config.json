@@ -4,6 +4,10 @@
       "command": "npx",
       "args": ["-y", "@modelcontextprotocol/server-filesystem", "./", "/Users/faroukbelhadj/Desktop", "/Users/faroukbelhadj"],
       "env": {}
-    }
+    },
+    "puppeteer": {
+      "command": "node",
+      "args": ["/Users/faroukbelhadj/Dev-env/AI/MCP/contrib/puppeteer-mcp-server/dist/index.js"]
+  }
   }
 }

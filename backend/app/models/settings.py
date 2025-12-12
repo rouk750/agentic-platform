@@ -9,6 +9,7 @@ class ProviderType(str, Enum):
     OLLAMA = "ollama"
     AZURE = "azure"
     LMSTUDIO = "lmstudio"
+    BEDROCK = "bedrock"
 
 class LLMProfile(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)

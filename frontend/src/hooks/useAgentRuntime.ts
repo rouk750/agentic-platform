@@ -117,7 +117,8 @@ export function useAgentRuntime() {
                         case 'error':
                             setStatus('error');
                             addLog({ event: 'Runtime Error', level: 'error', details: { message: data.message } });
-                            toast.error(data.message || 'An error occurred');
+                            console.error("Agent Runtime Error:", data.message);
+                            toast.error(data.message || 'An error occurred during execution');
                             break;
                         case 'tool_start':
                             setCurrentTool(data.name);

@@ -24,6 +24,7 @@ const PROVIDERS = [
     { value: 'ollama', label: 'Ollama (Local)' },
     { value: 'lmstudio', label: 'LM Studio (Local)' },
     { value: 'mistral', label: 'Mistral AI' },
+    { value: 'bedrock', label: 'Amazon Bedrock' },
 ];
 
 export function AddModelDialog({ open, onOpenChange, onModelAdded }: AddModelDialogProps) {

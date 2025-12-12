@@ -1,4 +1,4 @@
-from typing import Optional, Type, Any, Dict
+from typing import Optional, Type, Any, Dict, List
 from langchain_core.tools import BaseTool
 from pydantic import BaseModel, create_model, Field
 
@@ -29,16 +29,27 @@ class MCPLangChainTool(BaseTool):
         for prop_name, prop_schema in properties.items():
             # Simplification: mapping basic types. 
             # In a robust implementation, we'd do a recursive conversion.
-            # For now, we use a basic mapping or Any.
             prop_type = Any
-            if prop_schema.get("type") == "string":
+            schema_type = prop_schema.get("type")
+            
+            if schema_type == "string":
                 prop_type = str
-            elif prop_schema.get("type") == "integer":
+            elif schema_type == "integer":
                 prop_type = int
-            elif prop_schema.get("type") == "boolean":
+            elif schema_type == "number":
+                prop_type = float
+            elif schema_type == "boolean":
                 prop_type = bool
+            elif schema_type == "array":
+                prop_type = List[Any]
+            elif schema_type == "object":
+                prop_type = Dict[str, Any]
                 
             default = ... if prop_name in required else None
+            # Handle explicit default in schema if present
+            if "default" in prop_schema:
+                default = prop_schema["default"]
+                
             fields[prop_name] = (prop_type, Field(default=default, description=prop_schema.get("description")))
             
         args_schema = create_model(f"{name}Schema", **fields)
@@ -60,13 +71,15 @@ class MCPLangChainTool(BaseTool):
         """
         # Since we are in an async context (FastAPI), we should prioritize _arun.
         # But if LangGraph calls _run, we might fail.
-        # Let's try to block if needed, or rely on _arun.
+        # Let's try to block if definitely needed, or rely on _arun.
+        print(f"CRITICAL ERROR: MCPLangChainTool._run (sync) was called for {self.tool_name}. This tool only supports async.")
         raise NotImplementedError("This tool only supports async execution via _arun")
 
     async def _arun(self, **kwargs: Any) -> Any:
         """
         Async execution of the tool.
         """
+        print(f"DEBUG: Executing MCP Tool {self.server_name}/{self.tool_name} with args: {kwargs}")
         try:
             result = await self.client_manager.call_tool(
                 self.server_name,
@@ -87,8 +100,13 @@ class MCPLangChainTool(BaseTool):
                         output.append(str(item))
             else:
                 output.append(str(result))
-                
-            return "\n".join(output)
+            
+            final_output = "\n".join(output)
+            print(f"DEBUG: MCP Tool {self.tool_name} success. Output len: {len(final_output)}")
+            return final_output
             
         except Exception as e:
-            return f"Error executing MCP tool {self.tool_name}: {e}"
+            error_msg = f"Error executing MCP tool {self.tool_name}: {e}"
+            print(f"ERROR: {error_msg}")
+            # Identify if it's a validation error usually caused by bad args
+            return error_msg
