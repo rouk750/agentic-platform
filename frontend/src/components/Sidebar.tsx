@@ -1,4 +1,4 @@
-import { Bot, Wrench, GitFork, Settings, Database, Sparkles } from 'lucide-react';
+import { Bot, Wrench, GitFork, Settings, Database, Sparkles, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export default function Sidebar() {
@@ -77,6 +77,17 @@ export default function Sidebar() {
                         <GitFork size={20} />
                     </div>
                     <span className="font-medium">Router</span>
+                </div>
+
+                <div
+                    className="flex items-center gap-3 p-3 text-slate-700 bg-white border border-slate-200 rounded-lg cursor-grab hover:border-orange-500 hover:text-orange-600 hover:shadow-sm transition-all"
+                    onDragStart={(event) => onDragStart(event, 'iterator', { label: 'Loop Iterator' })}
+                    draggable
+                >
+                    <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
+                        <RefreshCw size={20} />
+                    </div>
+                    <span className="font-medium">Iterator</span>
                 </div>
             </div>
 

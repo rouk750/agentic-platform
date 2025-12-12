@@ -76,6 +76,7 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
         };
 
         if (selectedModel) {
+            updates.profile_id = selectedModel.id; // Critical: Backend expects profile_id
             updates.modelId = selectedModel.id;
             updates.modelName = selectedModel.name;
             updates.provider = selectedModel.provider;

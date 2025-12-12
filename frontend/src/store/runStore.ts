@@ -6,6 +6,7 @@ export interface Message {
   id: string;
   role: MessageType;
   content: string;
+  name?: string; // Logged sender name
   timestamp: number;
   toolDetails?: {
     name: string;
@@ -25,11 +26,13 @@ interface RunState {
   status: 'idle' | 'connecting' | 'running' | 'error' | 'done';
   messages: Message[];
   activeNodeId: string | null;
+  nodeLabels: Record<string, string>; // Map nodeId -> Label
   logs: LogEntry[];
   
   // Actions
   setStatus: (status: RunState['status']) => void;
   setActiveNode: (nodeId: string | null) => void;
+  setNodeLabels: (labels: Record<string, string>) => void;
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
   appendToken: (token: string) => void;
   addLog: (entry: Omit<LogEntry, 'timestamp'>) => void;
@@ -40,11 +43,14 @@ export const useRunStore = create<RunState>((set) => ({
   status: 'idle',
   messages: [],
   activeNodeId: null,
+  nodeLabels: {},
   logs: [],
 
   setStatus: (status) => set({ status }),
   
   setActiveNode: (activeNodeId) => set({ activeNodeId }),
+  
+  setNodeLabels: (nodeLabels) => set({ nodeLabels }),
   
   addMessage: (msg) => set((state) => ({
     messages: [
@@ -61,13 +67,15 @@ export const useRunStore = create<RunState>((set) => ({
     const messages = [...state.messages];
     const lastMsg = messages[messages.length - 1];
     
-    // Only append if the last message is from AI
+    // Only append if the last message is from AI and MATCHES current active node if possible?
+    // Simply checking role 'ai' is usually enough for streaming.
     if (lastMsg && lastMsg.role === 'ai') {
         const updatedMsg = { ...lastMsg, content: lastMsg.content + token };
         messages[messages.length - 1] = updatedMsg;
         return { messages };
     } else {
         // If last message was user or tool, create a new AI message
+        const senderName = state.activeNodeId ? state.nodeLabels[state.activeNodeId] : undefined;
         return {
             messages: [
                 ...messages,
@@ -75,6 +83,7 @@ export const useRunStore = create<RunState>((set) => ({
                     id: crypto.randomUUID(),
                     role: 'ai',
                     content: token,
+                    name: senderName,
                     timestamp: Date.now()
                 }
             ]

@@ -32,6 +32,7 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
         
         if node_type in NODE_REGISTRY:
             node_class = NODE_REGISTRY[node_type]
+            
             # Instantiate the node executable
             # Some nodes might be functions, some classes. 
             # Our GenericAgentNode is a class we instantiate.
@@ -157,7 +158,8 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
             # Default route (handle 'default' or 'else')
             default_route_target = handle_to_target.get('default') or handle_to_target.get('else')
             
-            router_fn = make_router(routes_config, handle_to_target, default_route_target)
+            source_label = source_node_data.get("label", f"Router {source_id}")
+            router_fn = make_router(routes_config, handle_to_target, default_route_target, source_label=source_label)
             
             # Build path map for validation
             path_map = {}
@@ -171,7 +173,37 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
             workflow.add_conditional_edges(source_id, router_fn, path_map)
             continue
         
-        # --- 3. Standard / Fallback Edge Processing ---
+            workflow.add_conditional_edges(source_id, router_fn, path_map)
+            continue
+        
+        # --- 3. Iterator Node Logic (Next vs Complete) ---
+        if source_node_type == 'iterator':
+            next_target = None
+            complete_target = None
+            
+            for t in targets:
+                if t['handle'] == 'next':
+                    next_target = t['target']
+                elif t['handle'] == 'complete':
+                    complete_target = t['target']
+
+            def route_iterator(state, config=None, n_target=next_target, c_target=complete_target):
+                # Check _signal in state (set by IteratorNode)
+                signal = state.get("_signal", "COMPLETE") 
+                if signal == "NEXT":
+                    return n_target if n_target else END
+                else:
+                    return c_target if c_target else END
+
+            path_map = {}
+            if next_target: path_map[next_target] = next_target
+            if complete_target: path_map[complete_target] = complete_target
+            path_map[END] = END
+            
+            workflow.add_conditional_edges(source_id, route_iterator, path_map)
+            continue
+
+        # --- 4. Standard / Fallback Edge Processing ---
         # If we reach here, it means it's not a tool call and not a router node logic.
         # We simply add edges to all targets. LangGraph supports fan-out (state sent to multiple nodes).
         if targets:

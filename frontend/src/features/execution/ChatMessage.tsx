@@ -49,37 +49,44 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 </div>
             )}
 
-            <div className={clsx(
-                "max-w-[85%] px-4 py-3 rounded-2xl shadow-sm text-sm overflow-hidden",
-                isAi
-                    ? "bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-tl-none"
-                    : "bg-blue-600 text-white rounded-tr-none"
-            )}>
-                <Markdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                        code({ node, inline, className, children, ...props }: any) {
-                            const match = /language-(\w+)/.exec(className || '');
-                            return !inline && match ? (
-                                <SyntaxHighlighter
-                                    {...props}
-                                    style={vscDarkPlus}
-                                    language={match[1]}
-                                    PreTag="div"
-                                    className="rounded-md !bg-zinc-900 !m-0"
-                                >
-                                    {String(children).replace(/\n$/, '')}
-                                </SyntaxHighlighter>
-                            ) : (
-                                <code {...props} className={clsx(className, "bg-black/10 dark:bg-white/10 px-1 rounded")}>
-                                    {children}
-                                </code>
-                            );
-                        }
-                    }}
-                >
-                    {message.content}
-                </Markdown>
+            <div className="flex flex-col gap-1 max-w-[85%]">
+                {isAi && message.name && (
+                    <span className="text-xs text-zinc-500 dark:text-zinc-400 ml-1 font-medium">
+                        {message.name}
+                    </span>
+                )}
+                <div className={clsx(
+                    "px-4 py-3 rounded-2xl shadow-sm text-sm overflow-hidden",
+                    isAi
+                        ? "bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-800 dark:text-zinc-200 rounded-tl-none"
+                        : "bg-blue-600 text-white rounded-tr-none"
+                )}>
+                    <Markdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                            code({ node, inline, className, children, ...props }: any) {
+                                const match = /language-(\w+)/.exec(className || '');
+                                return !inline && match ? (
+                                    <SyntaxHighlighter
+                                        {...props}
+                                        style={vscDarkPlus}
+                                        language={match[1]}
+                                        PreTag="div"
+                                        className="rounded-md !bg-zinc-900 !m-0"
+                                    >
+                                        {String(children).replace(/\n$/, '')}
+                                    </SyntaxHighlighter>
+                                ) : (
+                                    <code {...props} className={clsx(className, "bg-black/10 dark:bg-white/10 px-1 rounded")}>
+                                        {children}
+                                    </code>
+                                );
+                            }
+                        }}
+                    >
+                        {message.content}
+                    </Markdown>
+                </div>
             </div>
 
             {!isAi && (

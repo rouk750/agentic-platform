@@ -7,6 +7,7 @@ class ToolNode:
     def __init__(self, node_id: str, config: dict = None):
         self.node_id = node_id
         self.config = config or {}
+        self.label = self.config.get("label", "Tool Node")
         
     async def __call__(self, state: GraphState) -> Dict[str, Any]:
         """
@@ -37,7 +38,14 @@ class ToolNode:
                     output = f"Error executing tool {tool_name}: {str(e)}"
             else:
                 output = f"Error: Tool {tool_name} not found."
-                
+            
+            from app.engine.debug import print_debug
+            print_debug(f"DEBUG TOOL NODE {self.label} ({self.node_id})", {
+                 "Tool": tool_name,
+                 "Args": tool_args,
+                 "Output": str(output)[:500]
+            })
+
             results.append(ToolMessage(
                 content=str(output),
                 tool_call_id=tool_call_id,

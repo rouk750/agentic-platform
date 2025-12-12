@@ -21,6 +21,7 @@ import { RouterNode } from '../nodes/RouterNode';
 import { ToolNode } from '../nodes/ToolNode';
 import { RAGNode } from '../nodes/RAGNode';
 import { SmartNode } from '../nodes/SmartNode';
+import IteratorNode from '../nodes/IteratorNode';
 
 const nodeTypes = {
     agent: AgentNode,
@@ -28,6 +29,7 @@ const nodeTypes = {
     tool: ToolNode,
     rag: RAGNode,
     smart_node: SmartNode,
+    iterator: IteratorNode,
 };
 
 function FlowEditorInstance() {

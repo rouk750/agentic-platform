@@ -49,10 +49,11 @@ def create_llm_instance(profile: LLMProfile):
             base_url=profile.base_url
         )
     elif profile.provider == ProviderType.OLLAMA:
+        url = profile.base_url or "http://localhost:11434"
         return ChatOllama(
             model=profile.model_id,
             temperature=profile.temperature,
-            base_url=profile.base_url or "http://localhost:11434"
+            base_url=url
         )
     elif profile.provider == ProviderType.LMSTUDIO:
         # LM Studio is OpenAI compatible

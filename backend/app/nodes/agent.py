@@ -8,6 +8,7 @@ class GenericAgentNode:
         self.node_id = node_id
         self.config = config
         self.profile_id = config.get('profile_id')
+        self.label = config.get('label', 'Agent')
         self.system_prompt = config.get('system_prompt', "")
         self.output_schema = config.get('output_schema', [])
         self.flexible_mode = config.get('flexible_mode', False)
@@ -66,6 +67,18 @@ class GenericAgentNode:
         if effective_system_prompt:
              invocation_messages = [SystemMessage(content=effective_system_prompt)] + messages
 
+        from app.engine.debug import print_debug
+        
+        debug_content = {
+            "System Prompt": f"{effective_system_prompt[:200]}..." if effective_system_prompt else "None",
+            "Messages Count": len(invocation_messages),
+            "Profile": f"ID={profile.id}, Provider={profile.provider}, Model={profile.model_id}, URL={profile.base_url}"
+        }
+        if invocation_messages:
+            debug_content["Last Msg"] = invocation_messages[-1].content[:500]
+            
+        print_debug(f"DEBUG AGENT {self.label} ({self.node_id})", debug_content)
+
         # Bind tools if any
         # The frontend sends a list of tool names in config['tools']
         tool_names = self.config.get('tools', [])
@@ -84,24 +97,51 @@ class GenericAgentNode:
             
         response = await llm.ainvoke(invocation_messages)
         
+        
+        # Output Logging
+        output_content = {
+            "Response": response.content[:500] if response.content else "None",
+            "Tool Calls": str(response.tool_calls) if hasattr(response, 'tool_calls') and response.tool_calls else "None"
+        }
+        print_debug(f"DEBUG AGENT {self.label} ({self.node_id}) [OUTPUT]", output_content)
+
         # Post-process response for Structured Output
         context_update = {}
         # Parse JSON if schema is requested OR flexible mode is active
         if (self.output_schema or self.flexible_mode) and response.content:
+            content_str = str(response.content) # Initialize content_str
             try:
-                # Naive JSON extraction (strip markdown if model ignores instruction)
-                content_str = str(response.content).strip()
-                if content_str.startswith("```json"):
-                    content_str = content_str[7:]
-                if content_str.endswith("```"):
-                    content_str = content_str[:-3]
+                import re
+                # Robust extraction: Look for the first valid JSON block {...}
+                json_match = re.search(r"(\{.*\})", content_str, re.DOTALL)
+                if json_match:
+                    content_str = json_match.group(1)
+                else:
+                    # Fallback cleanup
+                    content_str = content_str.strip()
+                    if content_str.startswith("```json"):
+                        content_str = content_str[7:]
+                    if content_str.endswith("```"):
+                        content_str = content_str[:-3]
                 
                 parsed_json = json.loads(content_str)
                 context_update = parsed_json
-            except json.JSONDecodeError:
-                print(f"Failed to parse JSON output from node {self.node_id}")
+                
+                # Critical Clean Up: Update the message content with the cleaned JSON
+                # so downstream nodes (SmartNode) don't get the dirty XML tags.
+                response.content = content_str
+                
+            except (json.JSONDecodeError, AttributeError):
+                print(f"Failed to parse JSON output from node {self.node_id}. Content was: {content_str}")
         
-        # Tag message with sender ID for tracking
-        response.name = self.node_id
+        # Tag message with sender Name (Sanitized Label) so Orchestrator recognizes it
+        import re
+        from langchain_core.messages import HumanMessage
+        sanitized_name = re.sub(r'[^a-zA-Z0-9_-]', '_', self.label)
         
-        return {"messages": [response], "context": context_update, "last_sender": self.node_id}
+        # Convert to HumanMessage to force Orchestrator to see it as an external result
+        # Add explicit header to help the LLM distinguish it from its own thoughts
+        final_content = f"### RESULT FROM {self.label} ###\n{response.content}"
+        human_response = HumanMessage(content=final_content, name=sanitized_name)
+        
+        return {"messages": [human_response], "context": context_update, "last_sender": self.node_id}

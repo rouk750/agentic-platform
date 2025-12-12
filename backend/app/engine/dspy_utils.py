@@ -15,7 +15,7 @@ def get_dspy_lm(profile: LLMProfile) -> dspy.LM:
     safe_key = api_key or "sk-dummy"
 
     # 1. Determine Provider Prefix & Config
-    model_path = profile.model_id
+    model_path = profile.model_id or ""
     kwargs = {"api_key": safe_key}
     
     if profile.provider == ProviderType.OPENAI:

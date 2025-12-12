@@ -3,7 +3,7 @@ from typing import Dict, Any, Callable, List, Optional
 from app.engine.state import GraphState
 from langgraph.graph import END
 
-def make_router(routes: List[Dict[str, Any]], handle_to_target: Dict[str, str], default_target: Optional[str] = None) -> Callable[[GraphState], str]:
+def make_router(routes: List[Dict[str, Any]], handle_to_target: Dict[str, str], default_target: Optional[str] = None, source_label: str = "Router") -> Callable[[GraphState], str]:
     """
     Creates a router function for a node based on a list of route definitions.
     
@@ -11,6 +11,7 @@ def make_router(routes: List[Dict[str, Any]], handle_to_target: Dict[str, str], 
         routes: A list of dicts, e.g. [{"condition": "contains", "value": "foo", "target_handle": "route-1"}]
         handle_to_target: A mapping of handle IDs (from UI) to actual target Node IDs.
         default_target: The target Node ID to use if no condition is met.
+        source_label: Human readable label of the source node.
     """
     def router(state: GraphState) -> str:
         messages = state.get("messages", [])
@@ -35,32 +36,42 @@ def make_router(routes: List[Dict[str, Any]], handle_to_target: Dict[str, str], 
             content_to_check = ""
 
             if source == "context":
-                # If key is provided, get that key. If not, maybe check whole context? 
-                # For now assume key is required for context routing.
                 if context_key:
                     raw_val = context.get(context_key, "")
                     content_to_check = str(raw_val) if raw_val is not None else ""
                 else:
-                    # If no key, skip or check something else?
                     continue
             else:
                 # Message based
                 if not messages:
+                    print(f"DEBUG Router: No messages found to route on.")
                     continue
                 last_message = messages[-1]
                 if hasattr(last_message, "content"):
                     content_to_check = str(last_message.content)
 
+            from app.engine.debug import print_debug
+
             # Logic Evaluation
+            matched = False
             if condition == "contains":
                 if value and value.lower() in content_to_check.lower():
-                    return target_node
+                    matched = True
             elif condition == "equals":
                 if value and value.lower() == content_to_check.lower():
-                    return target_node
+                     matched = True
             elif condition == "starts_with":
                 if value and content_to_check.lower().startswith(value.lower()):
-                    return target_node
+                     matched = True
+            
+            if matched:
+                print_debug(f"DEBUG ROUTER {source_label}", {
+                    "Content": content_to_check[:100],
+                    "Condition": f"{condition} '{value}'",
+                    "Result": "MATCH",
+                    "Target": target_node
+                })
+                return target_node
             elif condition == "regex":
                 if value:
                     try:

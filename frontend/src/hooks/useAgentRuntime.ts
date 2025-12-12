@@ -24,6 +24,17 @@ export function useAgentRuntime() {
     setStatus('connecting');
     addMessage({ role: 'user', content: input });
     
+    // Extract Node Labels from Graph
+    if (graphJson && Array.isArray(graphJson.nodes)) {
+        const labels: Record<string, string> = {};
+        graphJson.nodes.forEach((node: any) => {
+            if (node.id) {
+                labels[node.id] = node.data?.label || node.id;
+            }
+        });
+        useRunStore.getState().setNodeLabels(labels);
+    }
+    
     // 2. Open WebSocket
     // Generate a temporary graph ID or use a fixed one for playground
     const graphId = 'playground-' + Date.now();
