@@ -15,6 +15,7 @@ import { Save, Loader2, ArrowLeft } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 
 import { useGraphStore } from '../store/graphStore';
+import { useRunStore } from '../store/runStore';
 import { flowApi } from '../api/flows';
 import { AgentNode } from '../nodes/AgentNode';
 import { RouterNode } from '../nodes/RouterNode';
@@ -41,6 +42,12 @@ function FlowEditorInstance() {
     const [flowName, setFlowName] = useState("Untitled Flow");
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const resetRunState = useRunStore((state) => state.reset);
+
+    // Reset run state on mount to prevent stale highlights/messages
+    useEffect(() => {
+        resetRunState();
+    }, [resetRunState]);
 
     // Load flow data if ID is present
     useEffect(() => {
@@ -75,6 +82,35 @@ function FlowEditorInstance() {
             setLoading(false);
         }
     }, [id, setNodes, setEdges, navigate]);
+
+    // Active Edge Highlighting
+    const activeNodeId = useRunStore((state) => state.activeNodeId);
+
+    useEffect(() => {
+        const { edges } = useGraphStore.getState();
+
+        const newEdges = edges.map((edge) => {
+            // If there's an active node, highlight edges targeting it
+            if (activeNodeId && edge.target === activeNodeId) {
+                return {
+                    ...edge,
+                    animated: true,
+                    style: { ...edge.style, stroke: '#22c55e', strokeWidth: 2 },
+                };
+            }
+            // Reset others
+            return {
+                ...edge,
+                animated: false,
+                style: { ...edge.style, stroke: '#b1b1b7', strokeWidth: 1 },
+            };
+        });
+
+        // Only update if something changed (JSON stringify is a cheap deep compare for simple edge arrays)
+        if (JSON.stringify(newEdges) !== JSON.stringify(edges)) {
+            setEdges(newEdges);
+        }
+    }, [activeNodeId, setEdges]);
 
     const onDragOver = useCallback((event: React.DragEvent) => {
         event.preventDefault();

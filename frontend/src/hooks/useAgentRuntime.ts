@@ -13,9 +13,11 @@ export function useAgentRuntime() {
     setStatus, 
     appendToken, 
     setActiveNode, 
+    setCurrentTool,
     addLog, 
     addMessage,
-    clearSession 
+    clearSession,
+    updateIteratorProgress 
   } = useRunStore();
 
   const connect = useCallback((graphJson: any, input: string) => {
@@ -79,8 +81,15 @@ export function useAgentRuntime() {
                             addLog({ event: 'Node Active', level: 'info', details: { nodeId: data.node_id } });
                             break;
                         case 'node_finished':
-                             setActiveNode(null);
-                             break;
+                            // Handle iterator progress
+                            if (data.data && data.data._iterator_metadata) {
+                                const { node_id, current, total } = data.data._iterator_metadata;
+                                updateIteratorProgress(node_id, current, total);
+                            }
+                            
+                            // Clear active node to prevent it sticking
+                            setActiveNode(null);
+                            break;
                         case 'done':
                             setStatus('done');
                             addLog({ event: 'Execution Finished', level: 'info', details: {} });
@@ -92,6 +101,7 @@ export function useAgentRuntime() {
                             toast.error(data.message || 'An error occurred');
                             break;
                         case 'tool_start':
+                            setCurrentTool(data.name);
                             addMessage({
                                 role: 'tool',
                                 content: '', 
@@ -102,6 +112,7 @@ export function useAgentRuntime() {
                             });
                             break;
                         case 'tool_end':
+                            setCurrentTool(null);
                             addLog({ event: 'Tool Finished', level: 'info', details: { output: data.output } });
                             break;
                     }

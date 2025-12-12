@@ -27,6 +27,9 @@ class IteratorNode:
         queue_key = f"_iterator_queue_{self.node_id}"
         
         # 1. Initialize Queue if not present
+        # 1. Initialize Queue if not present
+        total_key = f"_iterator_total_{self.node_id}"
+        
         if queue_key not in context:
             source_list = context.get(self.input_list_variable, [])
             
@@ -44,44 +47,58 @@ class IteratorNode:
                 
             # Create a shallow copy to manage the queue safely
             context[queue_key] = list(source_list)
-            print_debug(f"ITERATOR {self.label} [INIT]", {"Queue Size": len(context[queue_key])})
+            context[total_key] = len(source_list) # Store total
+            print_debug(f"ITERATOR {self.label} [INIT]", {"Queue Size": len(context[queue_key]), "Total": context[total_key]})
 
         # 2. Process Queue
         queue = context[queue_key]
+        total = context.get(total_key, len(queue)) # Fallback if missing
         
         if len(queue) > 0:
             # Pop the next item
             next_item = queue.pop(0)
             
-            # Update State:
-            # - Update the queue (removed item)
-            # - Set the output variable to the current item
+            # Progress Calculation
+            # Total 5. Pop 1. Remaining 4. Current = 1. -> 5 - 4 = 1.
+            current_index = total - len(queue)
             
-            print_debug(f"ITERATOR {self.label} [NEXT]", {"Item": str(next_item)[:100], "Remaining": len(queue)})
+            print_debug(f"ITERATOR {self.label} [NEXT]", {"Item": str(next_item)[:100], "Remaining": len(queue), "Progress": f"{current_index}/{total}"})
             
             return {
                 # Update context with new queue state and current item
                 queue_key: queue, 
+                total_key: total, # Persist total
                 self.output_item_variable: next_item,
                 
                 # Signal for the Router/Compiler
                 "_signal": "NEXT",
-                "last_sender": self.node_id
+                "last_sender": self.node_id,
+                
+                # Metadata for Frontend
+                "_iterator_metadata": {
+                    "node_id": self.node_id,
+                    "progress": f"{current_index}/{total}",
+                    "current": current_index,
+                    "total": total
+                }
             }
             
         else:
             # Queue is empty -> Finished
             print_debug(f"ITERATOR {self.label} [COMPLETE]", {"Status": "Done"})
             
-            # Cleanup the queue key? Or keep it empty? 
-            # Keeping it empty prevents re-initialization if visited again, which is usually correct for "one-pass".
-            # If we wanted to loop *again* later, we'd need a reset mechanism. For now, one-pass.
-            
             return {
                 queue_key: [], # Ensure it stays empty
+                total_key: total,
                 self.output_item_variable: None, # Optional: clear current item
                 "_signal": "COMPLETE",
-                "last_sender": self.node_id
+                "last_sender": self.node_id,
+                "_iterator_metadata": {
+                    "node_id": self.node_id,
+                    "progress": "Done",
+                    "current": total,
+                    "total": total
+                }
             }
 
     async def __call__(self, state: GraphState):

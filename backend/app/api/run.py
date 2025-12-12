@@ -87,11 +87,25 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
                 elif kind == "on_chain_start":
                     # Detect if it's a node start
                     node_name = event["name"]
-                    if node_name and node_name not in ["__start__", "__end__", "LangGraph"]:
+                    if node_name and node_name not in ["__start__", "__end__", "LangGraph", "route_tool", "route_iterator"]:
                         await websocket.send_json({"type": "node_active", "node_id": node_name})
                 
                 elif kind == "on_chain_end":
-                     await websocket.send_json({"type": "node_finished", "node_id": event["name"]})
+                     # Pass the output which might contain metadata like _iterator_metadata
+                     output = event["data"].get("output")
+                     
+                     # Safe serialization for frontend:
+                     # Only pull out specific metadata we need to avoid "Object not serializable" errors
+                     # with complex LangChain objects.
+                     safe_data = {}
+                     if isinstance(output, dict) and "_iterator_metadata" in output:
+                         safe_data["_iterator_metadata"] = output["_iterator_metadata"]
+                         
+                     await websocket.send_json({
+                         "type": "node_finished", 
+                         "node_id": event["name"],
+                         "data": safe_data
+                     })
 
                 elif kind == "on_tool_start":
                     await websocket.send_json({

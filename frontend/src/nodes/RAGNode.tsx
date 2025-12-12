@@ -1,8 +1,13 @@
-import { Handle, Position, NodeProps } from '@xyflow/react';
-import { Database } from 'lucide-react';
+import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
+import { Database, Info } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
+import { useState } from 'react';
+import { TechnicalInfoDialog } from './TechnicalInfoDialog';
 
-export function RAGNode({ selected, data }: NodeProps) {
+export function RAGNode({ id, selected, data }: NodeProps) {
+    const { updateNodeData } = useReactFlow();
+    const [infoOpen, setInfoOpen] = useState(false);
+
     return (
         <div
             className={twMerge(
@@ -14,7 +19,19 @@ export function RAGNode({ selected, data }: NodeProps) {
                 <div className="p-1.5 bg-purple-100 text-purple-600 rounded">
                     <Database size={16} />
                 </div>
-                <div className="font-bold text-slate-700 text-sm">RAG Retriever</div>
+                <input
+                    className="font-bold text-slate-700 bg-transparent border-none p-0 focus:ring-0 w-full text-sm truncate placeholder:text-slate-400"
+                    value={String(data.label || "RAG Retriever")}
+                    onChange={(e) => updateNodeData(id, { label: e.target.value })}
+                    placeholder="RAG Name"
+                />
+
+                <button
+                    onClick={() => setInfoOpen(true)}
+                    className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                >
+                    <Info size={16} />
+                </button>
             </div>
 
             <div className="text-xs text-slate-500">
@@ -43,6 +60,12 @@ export function RAGNode({ selected, data }: NodeProps) {
                     className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white"
                 />
             </div>
+
+            <TechnicalInfoDialog
+                open={infoOpen}
+                onOpenChange={setInfoOpen}
+                data={{ ...data, id }}
+            />
         </div>
     );
 }

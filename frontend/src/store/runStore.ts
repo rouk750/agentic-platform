@@ -7,6 +7,7 @@ export interface Message {
   role: MessageType;
   content: string;
   name?: string; // Logged sender name
+  nodeId?: string | null; // ID of the node that generated this message
   timestamp: number;
   toolDetails?: {
     name: string;
@@ -27,16 +28,21 @@ interface RunState {
   messages: Message[];
   activeNodeId: string | null;
   nodeLabels: Record<string, string>; // Map nodeId -> Label
+  currentToolName: string | null;
+  iteratorProgress: Record<string, { current: number; total: number }>;
   logs: LogEntry[];
   
   // Actions
   setStatus: (status: RunState['status']) => void;
   setActiveNode: (nodeId: string | null) => void;
   setNodeLabels: (labels: Record<string, string>) => void;
+  setCurrentTool: (toolName: string | null) => void;
+  updateIteratorProgress: (nodeId: string, current: number, total: number) => void;
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
   appendToken: (token: string) => void;
   addLog: (entry: Omit<LogEntry, 'timestamp'>) => void;
   clearSession: () => void;
+  reset: () => void;
 }
 
 export const useRunStore = create<RunState>((set) => ({
@@ -44,6 +50,8 @@ export const useRunStore = create<RunState>((set) => ({
   messages: [],
   activeNodeId: null,
   nodeLabels: {},
+  currentToolName: null,
+  iteratorProgress: {}, // Initialized
   logs: [],
 
   setStatus: (status) => set({ status }),
@@ -51,6 +59,15 @@ export const useRunStore = create<RunState>((set) => ({
   setActiveNode: (activeNodeId) => set({ activeNodeId }),
   
   setNodeLabels: (nodeLabels) => set({ nodeLabels }),
+
+  setCurrentTool: (currentToolName) => set({ currentToolName }),
+
+  updateIteratorProgress: (nodeId, current, total) => set((state) => ({ // Implemented
+    iteratorProgress: {
+      ...state.iteratorProgress,
+      [nodeId]: { current, total }
+    }
+  })),
   
   addMessage: (msg) => set((state) => ({
     messages: [
@@ -67,14 +84,16 @@ export const useRunStore = create<RunState>((set) => ({
     const messages = [...state.messages];
     const lastMsg = messages[messages.length - 1];
     
-    // Only append if the last message is from AI and MATCHES current active node if possible?
-    // Simply checking role 'ai' is usually enough for streaming.
-    if (lastMsg && lastMsg.role === 'ai') {
+    // Check if the last message is from AI AND matches the current active node
+    // This allows separating messages from different agents even if they run sequentially
+    const isSameNode = lastMsg && lastMsg.role === 'ai' && lastMsg.nodeId === state.activeNodeId;
+
+    if (isSameNode) {
         const updatedMsg = { ...lastMsg, content: lastMsg.content + token };
         messages[messages.length - 1] = updatedMsg;
         return { messages };
     } else {
-        // If last message was user or tool, create a new AI message
+        // If last message was user, tool, or different agent, create a new AI message
         const senderName = state.activeNodeId ? state.nodeLabels[state.activeNodeId] : undefined;
         return {
             messages: [
@@ -84,6 +103,7 @@ export const useRunStore = create<RunState>((set) => ({
                     role: 'ai',
                     content: token,
                     name: senderName,
+                    nodeId: state.activeNodeId,
                     timestamp: Date.now()
                 }
             ]
@@ -99,6 +119,15 @@ export const useRunStore = create<RunState>((set) => ({
     status: 'idle',
     messages: [],
     activeNodeId: null,
+    logs: []
+  }),
+
+  reset: () => set({
+    status: 'idle',
+    messages: [],
+    activeNodeId: null,
+    currentToolName: null,
+    iteratorProgress: {},
     logs: []
   }),
 }));

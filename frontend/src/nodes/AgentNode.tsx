@@ -1,15 +1,17 @@
 import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
-import { Bot, GripVertical, Settings2, Wrench, FileText, Cpu, Box } from 'lucide-react';
+import { Bot, GripVertical, Settings2, Wrench, FileText, Cpu, Box, Info } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { useState } from 'react';
 import { useRunStore } from '../store/runStore';
 import { AgentConfigDialog } from './AgentConfigDialog';
+import { TechnicalInfoDialog } from './TechnicalInfoDialog';
 
 export function AgentNode({ id, data, selected }: NodeProps) {
     const { updateNodeData } = useReactFlow();
     const activeNodeId = useRunStore((state) => state.activeNodeId);
     const isActive = id === activeNodeId;
     const [configOpen, setConfigOpen] = useState(false);
+    const [infoOpen, setInfoOpen] = useState(false);
 
     const toolCount = (data.tools as string[])?.length || 0;
     const modelName = data.modelName as string || "Select Model";
@@ -46,12 +48,21 @@ export function AgentNode({ id, data, selected }: NodeProps) {
                         </div>
                     </div>
 
-                    <button
-                        onClick={() => setConfigOpen(true)}
-                        className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
-                    >
-                        <Settings2 size={16} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setInfoOpen(true)}
+                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                            title="Technical Info"
+                        >
+                            <Info size={16} />
+                        </button>
+                        <button
+                            onClick={() => setConfigOpen(true)}
+                            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
+                        >
+                            <Settings2 size={16} />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Body Summary */}
@@ -110,6 +121,12 @@ export function AgentNode({ id, data, selected }: NodeProps) {
                 onOpenChange={setConfigOpen}
                 data={data}
                 onUpdate={(updates) => updateNodeData(id, updates)}
+            />
+
+            <TechnicalInfoDialog
+                open={infoOpen}
+                onOpenChange={setInfoOpen}
+                data={{ ...data, id }}
             />
         </>
     );

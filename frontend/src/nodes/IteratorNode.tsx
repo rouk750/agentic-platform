@@ -1,15 +1,35 @@
 import React, { memo, useState } from 'react';
 import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
-import { RefreshCw, Settings2 } from 'lucide-react';
+import { RefreshCw, Settings2, Info } from 'lucide-react';
 import { IteratorConfigDialog } from './IteratorConfigDialog';
+import { TechnicalInfoDialog } from './TechnicalInfoDialog';
+import { useRunStore } from '../store/runStore';
+import { twMerge } from 'tailwind-merge';
 
 const IteratorNode = memo(({ id, data, isConnectable }: NodeProps) => {
     const [configOpen, setConfigOpen] = useState(false);
+    const [infoOpen, setInfoOpen] = useState(false);
     const { updateNodeData } = useReactFlow();
+
+    // Get Run State
+    const activeNodeId = useRunStore((state) => state.activeNodeId);
+    const iteratorProgress = useRunStore((state) => state.iteratorProgress[id]);
+
+    const isActive = activeNodeId === id;
+
+    // Derived progress string
+
+    // Derived progress string
+    const progressText = iteratorProgress
+        ? `Step ${iteratorProgress.current} / ${iteratorProgress.total}`
+        : null;
 
     return (
         <>
-            <div className="px-4 py-2 shadow-md rounded-md bg-white border-2 border-orange-500 w-64 relative h-[150px] flex flex-col justify-between">
+            <div className={twMerge(
+                "px-4 py-2 shadow-md rounded-md bg-white border-2 w-64 relative h-[150px] flex flex-col justify-between transition-all duration-300",
+                isActive ? "border-green-500 ring-2 ring-green-500/20 shadow-xl scale-105" : "border-orange-500"
+            )}>
                 {/* Input Handle */}
                 <Handle
                     type="target"
@@ -24,21 +44,40 @@ const IteratorNode = memo(({ id, data, isConnectable }: NodeProps) => {
                             <RefreshCw size={20} />
                         </div>
                         <div>
-                            <div className="text-md font-bold text-gray-700">{String(data.label || 'Iterator')}</div>
+                            <input
+                                className="text-md font-bold text-gray-700 bg-transparent border-none p-0 focus:ring-0 w-full truncate placeholder:text-gray-400"
+                                value={String(data.label || 'Iterator')}
+                                onChange={(e) => updateNodeData(id, { label: e.target.value })}
+                                placeholder="Iterator Name"
+                            />
                             <div className="text-xs text-gray-500">Iterates over {String(data.input_list_variable || 'items')}</div>
                         </div>
                     </div>
 
-                    <button
-                        onClick={() => setConfigOpen(true)}
-                        className="nodrag p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md transition-colors z-50 cursor-pointer"
-                    >
-                        <Settings2 size={18} />
-                    </button>
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setInfoOpen(true)}
+                            className="nodrag p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors z-50 cursor-pointer"
+                        >
+                            <Info size={16} />
+                        </button>
+                        <button
+                            onClick={() => setConfigOpen(true)}
+                            className="nodrag p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-md transition-colors z-50 cursor-pointer"
+                        >
+                            <Settings2 size={18} />
+                        </button>
+                    </div>
                 </div>
 
-                <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-400 text-center">
-                    Next Item &rarr; {String(data.output_item_variable || 'current_item')}
+                <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-400 text-center relative">
+                    {progressText ? (
+                        <span className="font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full text-[10px]">
+                            {progressText}
+                        </span>
+                    ) : (
+                        <span>Next Item &rarr; {String(data.output_item_variable || 'current_item')}</span>
+                    )}
                 </div>
 
                 {/* Output Handles */}
@@ -75,6 +114,12 @@ const IteratorNode = memo(({ id, data, isConnectable }: NodeProps) => {
                 onOpenChange={setConfigOpen}
                 data={data}
                 onUpdate={(updates) => updateNodeData(id, updates)}
+            />
+
+            <TechnicalInfoDialog
+                open={infoOpen}
+                onOpenChange={setInfoOpen}
+                data={{ ...data, id }}
             />
         </>
     );
