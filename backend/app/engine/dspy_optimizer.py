@@ -65,12 +65,20 @@ async def optimize_node(request: OptimizationRequest, session: Session) -> Optim
                  return OptimizationResponse(status="skipped", compiled_program_path="", score=0.0)
 
             # Define Metric
-            def validate_answer(example, pred, trace=None):
-                for o in request.outputs:
-                    key = o["name"]
-                    if getattr(example, key) != getattr(pred, key):
-                        return False
-                return True
+            from app.engine.dspy_metrics import llm_metric
+
+            metric_fn = None
+            if request.metric in ["semantic", "llm_judge"]:
+                metric_fn = llm_metric
+            else:
+                 # Default exact match
+                def validate_answer(example, pred, trace=None):
+                    for o in request.outputs:
+                        key = o["name"]
+                        if getattr(example, key) != getattr(pred, key):
+                            return False
+                    return True
+                metric_fn = validate_answer
 
             # Run Optimizer (BootstrapFewShot)
             # Run Optimizer (BootstrapFewShot)
@@ -86,7 +94,7 @@ async def optimize_node(request: OptimizationRequest, session: Session) -> Optim
             max_rounds = min(max_rounds, 50) 
 
             teleprompter = BootstrapFewShot(
-                metric=validate_answer, 
+                metric=metric_fn, 
                 max_bootstrapped_demos=4, 
                 max_labeled_demos=8, 
                 max_rounds=max_rounds

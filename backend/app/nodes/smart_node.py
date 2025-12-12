@@ -122,20 +122,102 @@ class SmartNode:
         )
         
         # 4. Create Module
+        # 4. Create Module
         if self.mode == "Predict":
             module = dspy.Predict(DynamicSignature)
         else:
             module = dspy.ChainOfThought(DynamicSignature)
             
+        # 4b. Apply Guardrails via Refine (Explicit Configuration)
+        json_keys = []
+        has_guardrails = False
+        
+        for o in self.outputs:
+            # Check explicit flag 'force_json' (Legacy) OR new 'guardrail' config
+            guardrail = o.get("guardrail", {})
+            if guardrail is None: guardrail = {}
+            
+            # JSON Check
+            if o.get("force_json") is True or guardrail.get("id") == "json":
+                json_keys.append(o["name"])
+                has_guardrails = True
+            
+            # Check other guardrails existence
+            if guardrail.get("id") in ["regex", "length"]:
+                has_guardrails = True
+        
+        if has_guardrails:
+            rewards = []
+            # Import aggregate and legacy json reward (still useful for global check if needed, 
+            # though we could technically move JSON to the loop too, effectively treating it per-field)
+            from app.engine.dspy_rewards import make_aggregate_reward, make_json_reward
+            from app.services.guardrail_registry import get_guardrail_factory
+
+            # 1. Legacy/Global JSON Check
+            # We enforce this if 'json_keys' list is populated (from force_json legacy or guardrail='json')
+            if json_keys:
+                rewards.append(make_json_reward(json_keys))
+                
+            # 2. Dynamic Guardrails Loop
+            for o in self.outputs:
+                # Support new list format 'guardrails' AND legacy single object 'guardrail'
+                g_list = o.get("guardrails", [])
+                if isinstance(o.get("guardrail"), dict):
+                    g_list.append(o["guardrail"])
+                
+                for guardrail in g_list:
+                    if not guardrail: continue
+                    
+                    gid = guardrail.get("id")
+                    if gid == "json": continue 
+                    
+                    factory = get_guardrail_factory(gid)
+                    if factory:
+                        params = guardrail.get("params", {})
+                        try:
+                           if gid == "length" and "max_chars" in params:
+                               params["max_chars"] = int(params["max_chars"])
+                               
+                           reward_fn = factory(o["name"], **params)
+                           rewards.append(reward_fn)
+                        except Exception as e:
+                            print(f"Failed to instantiate guardrail {gid} for {o['name']}: {e}")
+
+            # Wrap with Refine if we have ANY rewards
+            if rewards:
+                module = dspy.Refine(
+                    module=module,
+                    N=3,
+                    reward_fn=make_aggregate_reward(rewards),
+                    threshold=1.0
+                )
+
         # 4.1 Check for Compiled Version and Load
+        # IMPT: We must load state into the INNER module if we wrapped it, 
+        # or load into the refine module? 
+        # Usually Refine wraps a module. If we compiled the inner module, we should load it there.
+        # But if we compiled the Refine module (unlikely), we load it on top.
+        # Let's assume we load into the base module (inner) for now.
+        
+        target_load_module = module
+        if isinstance(module, dspy.Refine):
+             # Access internal module? dspy.Refine store it as self.module 
+             # (based on signature inspection or standard wrapping)
+             if hasattr(module, 'module'):
+                 target_load_module = module.module
+        
         import os
         compiled_path = f"resources/smart_nodes/{self.node_id}_compiled.json"
+        
         if os.path.exists(compiled_path):
             try:
-                module.load(compiled_path)
+                target_load_module.load(compiled_path)
                 # print(f"Loaded compiled module for {self.node_id}")
             except Exception as e:
-                print(f"Failed to load compiled module for {self.node_id}: {e}")
+                print(f"WARNING: Failed to load compiled module for {self.node_id} (Version Mismatch?): {e}")
+                print("Continuing with un-optimized module (Zero-Shot).")
+                # Do not re-raise, allow fallback to zero-shot execution
+
 
             
         # 5. Execute

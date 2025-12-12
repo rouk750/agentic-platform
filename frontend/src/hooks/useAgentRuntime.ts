@@ -17,7 +17,8 @@ export function useAgentRuntime() {
     addLog, 
     addMessage,
     clearSession,
-    updateIteratorProgress 
+    updateIteratorProgress,
+    incrementNodeExecution
   } = useRunStore();
 
   const connect = useCallback((graphJson: any, input: string) => {
@@ -78,6 +79,24 @@ export function useAgentRuntime() {
                             break;
                         case 'node_active':
                             setActiveNode(data.node_id);
+                            incrementNodeExecution(data.node_id);
+                            
+                            // Add Trace Message for visibility
+                            const currentCount = useRunStore.getState().nodeExecutionCounts[data.node_id] || 1;
+                            const label = useRunStore.getState().nodeLabels[data.node_id] || data.node_id;
+                            
+                            addMessage({
+                                role: 'trace',
+                                content: '',
+                                name: label,
+                                nodeId: data.node_id,
+                                traceDetails: {
+                                    nodeId: data.node_id,
+                                    input: JSON.stringify(data.input, null, 2),
+                                    count: currentCount
+                                }
+                            });
+
                             addLog({ event: 'Node Active', level: 'info', details: { nodeId: data.node_id } });
                             break;
                         case 'node_finished':

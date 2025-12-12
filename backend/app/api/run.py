@@ -88,7 +88,40 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
                     # Detect if it's a node start
                     node_name = event["name"]
                     if node_name and node_name not in ["__start__", "__end__", "LangGraph", "route_tool", "route_iterator"]:
-                        await websocket.send_json({"type": "node_active", "node_id": node_name})
+                        # print(f"DEBUG CHAIN START {node_name}: {event}")
+                        # Event data usually has 'input' key.
+                        node_input = event["data"].get("input")
+                        
+                        # Fallback: sometimes it's directly in data if not keyed as input?
+                        if not node_input:
+                             node_input = event["data"]
+
+                        # Ensure serializability (e.g. for HumanMessage objects)
+                        # We can use a simple string conversion for complex objects for now, 
+                        # or a custom encoder if we want structured data.
+                        def make_serializable(obj):
+                            if hasattr(obj, "content"): return obj.content # Handle Messages
+                            if hasattr(obj, "dict"): return obj.dict() # Handle Pydantic
+                            try:
+                                json.dumps(obj)
+                                return obj
+                            except (TypeError, OverflowError):
+                                return str(obj)
+
+                        safe_input = make_serializable(node_input)
+                        if isinstance(safe_input, dict):
+                             # Recursive sanitization might be needed if dict contains objects
+                             # For simplicity, if standard json dump fails, we str() the whole thing
+                             try:
+                                 json.dumps(safe_input)
+                             except TypeError:
+                                 safe_input = str(node_input)
+
+                        await websocket.send_json({
+                            "type": "node_active", 
+                            "node_id": node_name,
+                            "input": safe_input
+                        })
                 
                 elif kind == "on_chain_end":
                      # Pass the output which might contain metadata like _iterator_metadata

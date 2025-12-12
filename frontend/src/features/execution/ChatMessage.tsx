@@ -34,7 +34,34 @@ export function ChatMessage({ message }: ChatMessageProps) {
                     <Collapsible.Content className="mt-2 text-xs font-mono bg-zinc-900 text-zinc-300 p-3 rounded-lg overflow-x-auto">
                         <div className="mb-2 text-zinc-500">Input:</div>
                         <pre>{message.toolDetails?.input}</pre>
-                        {/* Output would go here if we updated the message with output */}
+                    </Collapsible.Content>
+                </Collapsible.Root>
+            </div>
+        );
+    }
+
+    if (message.role === 'trace') {
+        return (
+            <div className="flex justify-start mb-4 px-4 w-full">
+                <Collapsible.Root open={isOpen} onOpenChange={setIsOpen} className="w-full max-w-[85%]">
+                    <Collapsible.Trigger className="flex items-center gap-2 p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg w-full hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors border border-indigo-100 dark:border-indigo-800">
+                        <div className="p-1 bg-indigo-100 text-indigo-600 rounded">
+                            <Bot size={14} />
+                        </div>
+                        <div className="flex-1 text-left flex items-center gap-2">
+                            <span className="text-sm font-medium text-indigo-900 dark:text-indigo-200">
+                                Trace: <span className="font-mono text-xs">{message.name}</span>
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.5 bg-indigo-200 text-indigo-800 rounded-full font-bold">
+                                #{message.traceDetails?.count}
+                            </span>
+                        </div>
+                        <ChevronDown size={14} className={clsx("transition-transform text-indigo-400", isOpen && "rotate-180")} />
+                    </Collapsible.Trigger>
+
+                    <Collapsible.Content className="mt-2 text-xs font-mono bg-zinc-900 text-zinc-300 p-3 rounded-lg overflow-x-auto border border-zinc-800">
+                        <div className="mb-2 text-zinc-500 font-semibold">Node Input:</div>
+                        <pre className="text-indigo-200">{message.traceDetails?.input}</pre>
                     </Collapsible.Content>
                 </Collapsible.Root>
             </div>

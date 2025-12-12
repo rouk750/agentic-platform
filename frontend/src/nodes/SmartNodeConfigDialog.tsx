@@ -5,7 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { getModels, LLMProfile } from '../api/settings';
-import { optimizeNode } from '../api/smartNode';
+import { optimizeNode, getAvailableGuardrails, GuardrailDefinition } from '../api/smartNode';
 
 interface SmartNodeConfigDialogProps {
     open: boolean;
@@ -38,12 +38,17 @@ export function SmartNodeConfigDialog({ open, onOpenChange, data, onUpdate }: Sm
     });
 
     const [models, setModels] = useState<LLMProfile[]>([]);
+    const [availableGuardrails, setAvailableGuardrails] = useState<GuardrailDefinition[]>([]);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (open) {
             setLoading(true);
-            getModels().then(setModels).finally(() => setLoading(false));
+            Promise.all([
+                getModels().then(setModels),
+                getAvailableGuardrails().then(setAvailableGuardrails)
+            ]).finally(() => setLoading(false));
+
             reset({
                 label: data.label || 'Smart Node',
                 goal: data.goal || '',
@@ -427,17 +432,97 @@ export function SmartNodeConfigDialog({ open, onOpenChange, data, onUpdate }: Sm
                                             </button>
                                         </div>
                                         <div className="space-y-2">
-                                            {outputFields.map((field, index) => (
-                                                <div key={field.id} className="flex gap-2 items-start">
-                                                    <div className="grid gap-1 flex-1">
-                                                        <input {...register(`outputs.${index}.name`)} placeholder="Field name (e.g. answer)" className="w-full text-xs p-1.5 rounded border border-slate-300 font-mono focus:border-green-500 outline-none" />
-                                                        <input {...register(`outputs.${index}.desc`)} placeholder="Description" className="w-full text-xs p-1.5 rounded border border-slate-300 focus:border-green-500 outline-none" />
+                                            {outputFields.map((field, index) => {
+                                                const currentLegacyGuardrail = watch(`outputs.${index}.guardrail`);
+                                                const currentGuardrails = watch(`outputs.${index}.guardrails`) || [];
+
+                                                // Combine legacy and new list for display
+                                                const activeGuardrails = currentGuardrails.length > 0 ? currentGuardrails : (currentLegacyGuardrail ? [currentLegacyGuardrail] : []);
+
+                                                // Helper to update specific guardrail in list
+                                                const updateGuardrail = (gIndex: number, newG: any) => {
+                                                    const newErrors = [...activeGuardrails];
+                                                    newErrors[gIndex] = newG;
+                                                    setValue(`outputs.${index}.guardrails`, newErrors);
+                                                    // Clear legacy to avoid confusion if we are now using list
+                                                    setValue(`outputs.${index}.guardrail`, null);
+                                                };
+
+                                                const addGuardrail = () => {
+                                                    const newList = [...activeGuardrails, { id: 'json', params: {} }];
+                                                    setValue(`outputs.${index}.guardrails`, newList);
+                                                    setValue(`outputs.${index}.guardrail`, null);
+                                                };
+
+                                                const removeGuardrail = (gIndex: number) => {
+                                                    const newG = activeGuardrails.filter((_: any, i: number) => i !== gIndex);
+                                                    setValue(`outputs.${index}.guardrails`, newG);
+                                                    setValue(`outputs.${index}.guardrail`, null);
+                                                };
+
+                                                return (
+                                                    <div key={field.id} className="flex gap-2 items-start bg-slate-50 p-3 rounded-lg border border-slate-100 mb-2">
+                                                        <div className="grid gap-3 flex-1">
+                                                            {/* Basic Fields */}
+                                                            <div className="flex gap-2">
+                                                                <input {...register(`outputs.${index}.name`)} placeholder="Field name (e.g. answer)" className="w-1/3 text-xs p-2 rounded border border-slate-300 font-mono focus:border-green-500 outline-none" />
+                                                                <input {...register(`outputs.${index}.desc`)} placeholder="Description" className="flex-1 text-xs p-2 rounded border border-slate-300 focus:border-green-500 outline-none" />
+                                                            </div>
+
+                                                            {/* Guardrails List */}
+                                                            <div className="space-y-2">
+                                                                {activeGuardrails.map((g: any, gIndex: number) => (
+                                                                    <div key={gIndex} className="flex items-start gap-2 bg-white p-2 rounded border border-slate-200 shadow-sm">
+                                                                        <div className="flex-1">
+                                                                            <select
+                                                                                className="w-full text-xs p-1.5 rounded border border-slate-200 text-slate-700 outline-none focus:border-amber-500 mb-1"
+                                                                                value={g.id}
+                                                                                onChange={(e) => updateGuardrail(gIndex, { ...g, id: e.target.value, params: {} })}
+                                                                            >
+                                                                                {availableGuardrails.map(def => (
+                                                                                    <option key={def.id} value={def.id}>{def.label}</option>
+                                                                                ))}
+                                                                            </select>
+
+                                                                            {/* Description */}
+                                                                            <div className="text-[10px] text-slate-500 mb-2 px-1">
+                                                                                {availableGuardrails.find(def => def.id === g.id)?.description}
+                                                                            </div>
+
+                                                                            {/* Dynamic Params */}
+                                                                            {availableGuardrails.find(def => def.id === g.id)?.params.map(param => (
+                                                                                <div key={param.name} className="mt-1">
+                                                                                    <label className="text-[10px] font-semibold text-slate-500 uppercase mb-0.5 block">{param.label}</label>
+                                                                                    <input
+                                                                                        type={param.type === 'number' ? 'number' : 'text'}
+                                                                                        value={g.params?.[param.name] || ''}
+                                                                                        onChange={(e) => {
+                                                                                            const val = param.type === 'number' ? parseFloat(e.target.value) : e.target.value;
+                                                                                            updateGuardrail(gIndex, { ...g, params: { ...g.params, [param.name]: val } });
+                                                                                        }}
+                                                                                        className="w-full text-xs p-1.5 rounded border border-slate-100 bg-slate-50 outline-none focus:border-amber-500"
+                                                                                        placeholder={param.label}
+                                                                                    />
+                                                                                </div>
+                                                                            ))}
+                                                                        </div>
+                                                                        <button type="button" onClick={() => removeGuardrail(gIndex)} className="text-slate-400 hover:text-red-500 p-1">
+                                                                            <Trash2 size={12} />
+                                                                        </button>
+                                                                    </div>
+                                                                ))}
+
+                                                                <button type="button" onClick={addGuardrail} className="text-[10px] font-medium text-amber-600 hover:text-amber-700 flex items-center gap-1 py-1 px-2 hover:bg-amber-50 rounded transition-colors w-fit">
+                                                                    <Plus size={12} /> Add Guardrail
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                        <button type="button" className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors" onClick={() => removeOutput(index)}>
+                                                            <Trash2 size={14} />
+                                                        </button>
                                                     </div>
-                                                    <button type="button" className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors" onClick={() => removeOutput(index)}>
-                                                        <Trash2 size={14} />
-                                                    </button>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 </div>
