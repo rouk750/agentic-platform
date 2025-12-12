@@ -135,6 +135,15 @@ class GenericAgentNode:
                 print(f"Failed to parse JSON output from node {self.node_id}. Content was: {content_str}")
         
         # Tag message with sender Name (Sanitized Label) so Orchestrator recognizes it
+        # BUT CRITICAL: If the message has tool_calls, we MUST return it as AIMessage
+        # otherwise the Compiler routing will fail to detect the tool call.
+        if hasattr(response, 'tool_calls') and response.tool_calls:
+             # It's a tool call -> Return as is (AIMessage)
+             # We might still want to tag it for logging, but for routing, the type matches.
+             # However, LangGraph expects the sender to be set on the message for state tracking.
+             response.name = self.label # Set name on AIMessage
+             return {"messages": [response], "context": context_update, "last_sender": self.node_id}
+        
         import re
         from langchain_core.messages import HumanMessage
         sanitized_name = re.sub(r'[^a-zA-Z0-9_-]', '_', self.label)
