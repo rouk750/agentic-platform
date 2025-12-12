@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type MessageType = 'user' | 'ai' | 'tool';
+export type MessageType = 'user' | 'ai' | 'tool' | 'trace';
 
 export interface Message {
   id: string;
@@ -13,6 +13,11 @@ export interface Message {
     name: string;
     input: string;
     output?: string;
+  };
+  traceDetails?: {
+    nodeId: string;
+    input: string;
+    count: number;
   };
 }
 
@@ -30,6 +35,7 @@ interface RunState {
   nodeLabels: Record<string, string>; // Map nodeId -> Label
   currentToolName: string | null;
   iteratorProgress: Record<string, { current: number; total: number }>;
+  nodeExecutionCounts: Record<string, number>;
   logs: LogEntry[];
   
   // Actions
@@ -37,6 +43,7 @@ interface RunState {
   setActiveNode: (nodeId: string | null) => void;
   setNodeLabels: (labels: Record<string, string>) => void;
   setCurrentTool: (toolName: string | null) => void;
+  incrementNodeExecution: (nodeId: string) => void;
   updateIteratorProgress: (nodeId: string, current: number, total: number) => void;
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
   appendToken: (token: string) => void;
@@ -51,7 +58,8 @@ export const useRunStore = create<RunState>((set) => ({
   activeNodeId: null,
   nodeLabels: {},
   currentToolName: null,
-  iteratorProgress: {}, // Initialized
+  nodeExecutionCounts: {}, 
+  iteratorProgress: {},
   logs: [],
 
   setStatus: (status) => set({ status }),
@@ -61,6 +69,13 @@ export const useRunStore = create<RunState>((set) => ({
   setNodeLabels: (nodeLabels) => set({ nodeLabels }),
 
   setCurrentTool: (currentToolName) => set({ currentToolName }),
+
+  incrementNodeExecution: (nodeId) => set((state) => ({
+    nodeExecutionCounts: {
+      ...state.nodeExecutionCounts,
+      [nodeId]: (state.nodeExecutionCounts[nodeId] || 0) + 1
+    }
+  })),
 
   updateIteratorProgress: (nodeId, current, total) => set((state) => ({ // Implemented
     iteratorProgress: {
@@ -119,6 +134,7 @@ export const useRunStore = create<RunState>((set) => ({
     status: 'idle',
     messages: [],
     activeNodeId: null,
+    nodeExecutionCounts: {},
     logs: []
   }),
 
@@ -128,6 +144,7 @@ export const useRunStore = create<RunState>((set) => ({
     activeNodeId: null,
     currentToolName: null,
     iteratorProgress: {},
+    nodeExecutionCounts: {},
     logs: []
   }),
 }));

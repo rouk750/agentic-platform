@@ -11,6 +11,7 @@ from app.api import run
 from app.api import tools
 from app.api import flows
 from app.api import smart_nodes
+from app.api import guardrails
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -41,6 +42,7 @@ app.include_router(run.router, prefix="/api", tags=["run"])
 app.include_router(tools.router, prefix="/api", tags=["tools"])
 app.include_router(flows.router, prefix="/api", tags=["flows"])
 app.include_router(smart_nodes.router, prefix="/api", tags=["smart-nodes"])
+app.include_router(guardrails.router, prefix="/api", tags=["guardrails"])
 
 @app.get("/")
 def read_root():

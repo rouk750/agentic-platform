@@ -10,11 +10,11 @@ class OptimizationRequest(BaseModel):
     node_id: str
     goal: str
     mode: str # "ChainOfThought" or "Predict"
-    inputs: List[Dict[str, str]] # List of {name, desc}
-    outputs: List[Dict[str, str]] # List of {name, desc}
+    inputs: List[Dict[str, Any]] # List of {name, desc}
+    outputs: List[Dict[str, Any]] # List of {name, desc}
     examples: List[DSPyExample]
     llm_profile_id: int
-    metric: str = "exact_match" # Future: "llm_judge"
+    metric: str = "semantic" # "exact_match" or "semantic"
     max_rounds: Optional[int] = 10
 
 class OptimizationResponse(BaseModel):
