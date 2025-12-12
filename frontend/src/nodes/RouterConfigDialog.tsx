@@ -2,7 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { X, Plus, Trash2, GitFork } from 'lucide-react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useEffect } from 'react';
-import { RouterNodeData, RouteCondition } from '../types/router';
+import type { RouterNodeData, RouteCondition } from '../types/router';
 
 interface RouterConfigDialogProps {
     open: boolean;

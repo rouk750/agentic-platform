@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, Settings, ArrowLeft, LayoutGrid, Box, Palette, Info } from 'lucide-react';
 import { ModelList } from '../features/settings/ModelList';
 import { AddModelDialog } from '../features/settings/AddModelDialog';
-import { getModels, deleteModel, LLMProfile } from '../api/settings';
+import { getModels, deleteModel } from '../api/settings';
+import type { LLMProfile } from '../types/settings';
 import { toast } from 'sonner';
 
 

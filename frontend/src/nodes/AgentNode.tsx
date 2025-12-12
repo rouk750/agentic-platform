@@ -1,5 +1,5 @@
-import { Handle, Position, NodeProps, useReactFlow, Node } from '@xyflow/react';
-import { AgentNodeData } from '../types/agent';
+import { Handle, Position, useReactFlow, type NodeProps, type Node } from '@xyflow/react';
+import type { AgentNodeData } from '../types/agent';
 import { Bot, Settings2, Wrench, FileText, Cpu, Box, Info } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { useState } from 'react';

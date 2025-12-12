@@ -3,14 +3,14 @@ import {
     addEdge,
     applyNodeChanges,
     applyEdgeChanges,
-    Edge,
-    Node,
-    OnNodesChange,
-    OnEdgesChange,
-    OnConnect,
-    NodeChange,
-    EdgeChange,
-    Connection,
+    type Edge,
+    type Node,
+    type OnNodesChange,
+    type OnEdgesChange,
+    type OnConnect,
+    type NodeChange,
+    type EdgeChange,
+    type Connection,
 } from '@xyflow/react';
 
 type GraphState = {

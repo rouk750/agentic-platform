@@ -1,4 +1,4 @@
-import { NodeData } from './common';
+import type { NodeData } from './common';
 
 export type SmartNodeMode = 'ChainOfThought' | 'Predict';
 

@@ -1,12 +1,11 @@
-
-import { Handle, Position, NodeProps, useReactFlow, Node } from '@xyflow/react';
+import { Handle, Position, useReactFlow, type NodeProps, type Node } from '@xyflow/react';
 import { SmartNodeConfigDialog } from './SmartNodeConfigDialog';
 import { TechnicalInfoDialog } from './TechnicalInfoDialog';
 import { Sparkles, Settings2, Brain, Zap, Info } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { useState } from 'react';
 import { useRunStore } from '../store/runStore';
-import { SmartNodeData, SmartNodeMode } from '../types/smartNode';
+import type { SmartNodeData, SmartNodeMode } from '../types/smartNode';
 
 type SmartNodeType = Node<SmartNodeData>;
 

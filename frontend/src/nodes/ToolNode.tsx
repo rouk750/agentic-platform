@@ -1,4 +1,4 @@
-import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
+import { Handle, Position, useReactFlow, type NodeProps } from '@xyflow/react';
 import { Wrench, Info, Loader2 } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { useRunStore } from '../store/runStore';

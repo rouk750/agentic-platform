@@ -3,10 +3,11 @@ import { X, Loader2, Plus, Trash2, Box } from 'lucide-react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { getModels, LLMProfile } from '../api/settings';
+import { getModels } from '../api/settings';
+import type { LLMProfile } from '../types/settings';
 import { ToolSelector } from './ToolSelector';
-import { AgentNodeData } from '../types/agent';
-import { SchemaField } from '../types/common';
+import type { AgentNodeData } from '../types/agent';
+import type { SchemaField } from '../types/common';
 
 interface AgentConfigDialogProps {
     open: boolean;

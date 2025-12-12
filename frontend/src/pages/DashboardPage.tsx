@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Trash2, Folder, Loader2, ArrowRight } from 'lucide-react';
-import { Flow, flowApi } from '../api/flows';
+import { flowApi, type Flow } from '../api/flows';
 import { toast } from 'sonner';
 
 export default function DashboardPage() {
