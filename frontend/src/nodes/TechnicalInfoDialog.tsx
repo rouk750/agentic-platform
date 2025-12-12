@@ -1,6 +1,6 @@
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, Code } from 'lucide-react';
-import React from 'react';
+
 
 interface TechnicalInfoDialogProps {
     open: boolean;

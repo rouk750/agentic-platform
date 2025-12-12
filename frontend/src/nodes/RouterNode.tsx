@@ -1,4 +1,5 @@
-import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
+import { Handle, Position, NodeProps, useReactFlow, Node } from '@xyflow/react';
+import { RouterNodeData } from '../types/router';
 import { GitFork, Settings2, Info } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { useState } from 'react';
@@ -6,7 +7,9 @@ import { useRunStore } from '../store/runStore';
 import { RouterConfigDialog } from './RouterConfigDialog';
 import { TechnicalInfoDialog } from './TechnicalInfoDialog';
 
-export function RouterNode({ id, selected, data }: NodeProps) {
+type RouterNodeType = Node<RouterNodeData>;
+
+export function RouterNode({ id, selected, data }: NodeProps<RouterNodeType>) {
     const { updateNodeData } = useReactFlow();
     const activeNodeId = useRunStore((state) => state.activeNodeId);
     const isActive = id === activeNodeId;
@@ -14,7 +17,7 @@ export function RouterNode({ id, selected, data }: NodeProps) {
     const [infoOpen, setInfoOpen] = useState(false);
 
     // Ensure routes array exists
-    const routes = (data.routes as any[]) || [];
+    const routes = data.routes || [];
 
     return (
         <>

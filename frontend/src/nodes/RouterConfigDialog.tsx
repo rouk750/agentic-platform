@@ -2,25 +2,17 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { X, Plus, Trash2, GitFork } from 'lucide-react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useEffect } from 'react';
+import { RouterNodeData, RouteCondition } from '../types/router';
 
 interface RouterConfigDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    data: any;
-    onUpdate: (data: any) => void;
+    data: RouterNodeData;
+    onUpdate: (data: Partial<RouterNodeData>) => void;
 }
 
-type RouteItem = {
-    id: string; // internal id for react-hook-form or handle mapping
-    source: 'message' | 'context';
-    context_key?: string;
-    condition: string;
-    value: string;
-    target_handle: string;
-};
-
 type FormData = {
-    routes: RouteItem[];
+    routes: RouteCondition[];
 };
 
 export function RouterConfigDialog({ open, onOpenChange, data, onUpdate }: RouterConfigDialogProps) {
@@ -30,7 +22,7 @@ export function RouterConfigDialog({ open, onOpenChange, data, onUpdate }: Route
         }
     });
 
-    const { fields, append, remove } = useFieldArray({
+    const { fields, append, remove } = useFieldArray<FormData>({
         control,
         name: "routes"
     });
@@ -51,7 +43,7 @@ export function RouterConfigDialog({ open, onOpenChange, data, onUpdate }: Route
     const onSubmit = (formData: FormData) => {
         // Ensure every route has a target_handle and id if missing
         const processedRoutes = formData.routes.map((route, index) => {
-            const handleId = route.target_handle || `route-${Date.now()}-${index}`;
+            const handleId = route.target_handle || `route - ${Date.now()} -${index} `;
             return {
                 ...route,
                 id: handleId, // simplified: use handle as id for this context
@@ -59,7 +51,11 @@ export function RouterConfigDialog({ open, onOpenChange, data, onUpdate }: Route
             };
         });
 
-        onUpdate({ routes: processedRoutes });
+        const updates: Partial<RouterNodeData> = {
+            routes: processedRoutes
+        };
+
+        onUpdate(updates);
         onOpenChange(false);
     };
 
@@ -138,13 +134,12 @@ export function RouterConfigDialog({ open, onOpenChange, data, onUpdate }: Route
                                                     <div className="flex flex-col">
                                                         <label className="text-[10px] text-slate-400 font-semibold mb-0.5">Condition</label>
                                                         <select
-                                                            {...register(`routes.${index}.condition`)}
-                                                            className="text-xs p-1.5 rounded border border-slate-300 bg-white focus:border-purple-500 outline-none w-32"
+                                                            {...register(`routes.${index}.condition` as const)}
+                                                            className="w-full text-xs p-1.5 rounded border border-slate-300 bg-white focus:border-purple-500 outline-none"
                                                         >
-                                                            <option value="contains">Contains</option>
                                                             <option value="equals">Equals</option>
-                                                            <option value="starts_with">Starts With</option>
-                                                            <option value="regex">Regex Match</option>
+                                                            <option value="contains">Contains</option>
+                                                            <option value="regex">Regex</option>
                                                         </select>
                                                     </div>
 

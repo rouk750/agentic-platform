@@ -1,22 +1,25 @@
 
-import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
+import { Handle, Position, NodeProps, useReactFlow, Node } from '@xyflow/react';
 import { SmartNodeConfigDialog } from './SmartNodeConfigDialog';
 import { TechnicalInfoDialog } from './TechnicalInfoDialog';
 import { Sparkles, Settings2, Brain, Zap, Info } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { useState } from 'react';
 import { useRunStore } from '../store/runStore';
+import { SmartNodeData, SmartNodeMode } from '../types/smartNode';
 
-export function SmartNode({ id, data, selected }: NodeProps) {
+type SmartNodeType = Node<SmartNodeData>;
+
+export function SmartNode({ id, data, selected }: NodeProps<SmartNodeType>) {
     const { updateNodeData } = useReactFlow();
     const activeNodeId = useRunStore((state) => state.activeNodeId);
     const isActive = id === activeNodeId;
     const [configOpen, setConfigOpen] = useState(false);
     const [infoOpen, setInfoOpen] = useState(false);
 
-    const mode = data.mode as string || "ChainOfThought"; // Default
-    const inputs = (data.inputs as any[]) || [];
-    const outputs = (data.outputs as any[]) || [];
+    const mode = (data.mode as SmartNodeMode) || "ChainOfThought"; // Default
+    const inputs = data.inputs || [];
+    const outputs = data.outputs || [];
 
     return (
         <>
@@ -86,7 +89,7 @@ export function SmartNode({ id, data, selected }: NodeProps) {
                                 Inputs
                             </div>
                             <div className="flex flex-col gap-0.5 text-slate-700">
-                                {inputs.length > 0 ? inputs.map((i: any, idx) => (
+                                {inputs.length > 0 ? inputs.map((i, idx) => (
                                     <span key={idx} className="truncate">• {i.name}</span>
                                 )) : <span className="text-slate-400 opacity-50">None</span>}
                             </div>
@@ -99,7 +102,7 @@ export function SmartNode({ id, data, selected }: NodeProps) {
                                 Outputs
                             </div>
                             <div className="flex flex-col gap-0.5 text-slate-700">
-                                {outputs.length > 0 ? outputs.map((o: any, idx) => (
+                                {outputs.length > 0 ? outputs.map((o, idx) => (
                                     <span key={idx} className="truncate">• {o.name}</span>
                                 )) : <span className="text-slate-400 opacity-50">None</span>}
                             </div>

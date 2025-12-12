@@ -1,16 +1,5 @@
 import axios from 'axios';
 
-// Get API base URL
-let API_BASE = "http://localhost:8000/api";
-if ((window as any).electronAPI) {
-    (window as any).electronAPI.getApiPort().then((port: number) => {
-        API_BASE = `http://localhost:${port}/api`;
-    });
-}
-// Note: This logic for base URL is a bit fragile if called immediately on load. 
-// A better pattern is to use a configured axios instance or fetch the port once.
-// For now, let's assume default or quick resolution.
-
 // Define Flow Type
 export interface Flow {
     id?: number;

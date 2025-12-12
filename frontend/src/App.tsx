@@ -3,7 +3,7 @@ import FlowEditor from './components/FlowEditor';
 import { ChatPanel } from './features/execution/ChatPanel';
 import { Toaster } from 'sonner';
 
-import { BrowserRouter, Routes, Route, useParams } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import SettingsPage from './pages/SettingsPage';
 import DashboardPage from './pages/DashboardPage';
 

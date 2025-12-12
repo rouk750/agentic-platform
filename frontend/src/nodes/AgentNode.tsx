@@ -1,20 +1,23 @@
-import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
-import { Bot, GripVertical, Settings2, Wrench, FileText, Cpu, Box, Info } from 'lucide-react';
+import { Handle, Position, NodeProps, useReactFlow, Node } from '@xyflow/react';
+import { AgentNodeData } from '../types/agent';
+import { Bot, Settings2, Wrench, FileText, Cpu, Box, Info } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { useState } from 'react';
 import { useRunStore } from '../store/runStore';
 import { AgentConfigDialog } from './AgentConfigDialog';
 import { TechnicalInfoDialog } from './TechnicalInfoDialog';
 
-export function AgentNode({ id, data, selected }: NodeProps) {
+type AgentNodeType = Node<AgentNodeData>;
+
+export function AgentNode({ id, data, selected }: NodeProps<AgentNodeType>) {
     const { updateNodeData } = useReactFlow();
     const activeNodeId = useRunStore((state) => state.activeNodeId);
     const isActive = id === activeNodeId;
     const [configOpen, setConfigOpen] = useState(false);
     const [infoOpen, setInfoOpen] = useState(false);
 
-    const toolCount = (data.tools as string[])?.length || 0;
-    const modelName = data.modelName as string || "Select Model";
+    const toolCount = data.tools?.length || 0;
+    const modelName = data.modelName || "Select Model";
     const hasPrompt = !!data.system_prompt;
 
     return (
@@ -75,7 +78,7 @@ export function AgentNode({ id, data, selected }: NodeProps) {
                         <Wrench size={14} />
                         <span className="font-medium">{toolCount} Tool{toolCount !== 1 && 's'}</span>
                     </div>
-                    {(data.output_schema as any[])?.length > 0 && (
+                    {data.output_schema && data.output_schema.length > 0 && (
                         <div className="flex items-center gap-1.5 text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">
                             <Box size={12} />
                             <span className="font-bold text-[10px]">JSON</span>

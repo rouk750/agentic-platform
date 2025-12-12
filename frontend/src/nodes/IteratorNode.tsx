@@ -1,12 +1,15 @@
-import React, { memo, useState } from 'react';
-import { Handle, Position, NodeProps, useReactFlow } from '@xyflow/react';
+import { memo, useState } from 'react';
+import { Handle, Position, NodeProps, useReactFlow, Node } from '@xyflow/react';
+import { IteratorNodeData } from '../types/iterator';
 import { RefreshCw, Settings2, Info } from 'lucide-react';
 import { IteratorConfigDialog } from './IteratorConfigDialog';
 import { TechnicalInfoDialog } from './TechnicalInfoDialog';
 import { useRunStore } from '../store/runStore';
 import { twMerge } from 'tailwind-merge';
 
-const IteratorNode = memo(({ id, data, isConnectable }: NodeProps) => {
+type IteratorNodeType = Node<IteratorNodeData>;
+
+const IteratorNode = memo(({ id, data, isConnectable }: NodeProps<IteratorNodeType>) => {
     const [configOpen, setConfigOpen] = useState(false);
     const [infoOpen, setInfoOpen] = useState(false);
     const { updateNodeData } = useReactFlow();
@@ -124,5 +127,7 @@ const IteratorNode = memo(({ id, data, isConnectable }: NodeProps) => {
         </>
     );
 });
+
+IteratorNode.displayName = "IteratorNode";
 
 export default IteratorNode;

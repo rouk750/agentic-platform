@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 // I need to use the relative path so Vite handles it, OR find the port.
 // In this template, normally there is a proxy.
 // Let's try changing to relative URL for WS.
-const BACKEND_WS_URL = 'ws://localhost:8000/api/ws/run';
+
 
 export function useAgentRuntime() {
   const socketRef = useRef<WebSocket | null>(null);
@@ -141,7 +141,7 @@ export function useAgentRuntime() {
 
     startSocket();
         
-  }, [setStatus, appendToken, setActiveNode, addLog, addMessage, clearSession]);
+  }, [setStatus, appendToken, setActiveNode, addLog, addMessage, clearSession, setCurrentTool, updateIteratorProgress]);
 
   const stop = useCallback(() => {
     if (socketRef.current) {

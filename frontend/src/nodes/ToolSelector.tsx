@@ -20,11 +20,10 @@ export function ToolSelector({ selectedTools, onChange }: ToolSelectorProps) {
     useEffect(() => {
         const fetchTools = async () => {
             try {
-                // Should use settings.ts or similar helper but axios is fine for now
                 // Need to get port
                 let port = 8000;
-                if ((window as any).electronAPI) {
-                    port = await (window as any).electronAPI.getApiPort();
+                if (window.electronAPI) {
+                    port = await window.electronAPI.getApiPort();
                 }
                 const res = await axios.get(`http://localhost:${port}/api/tools`);
                 setTools(res.data);
