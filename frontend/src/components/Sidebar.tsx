@@ -91,12 +91,7 @@ export default function Sidebar() {
                 </div>
             </div>
 
-            <div className="mt-auto border-t border-slate-200 pt-4">
-                <Link to="/settings" className="flex items-center gap-3 p-3 text-slate-700 hover:text-slate-900 hover:bg-slate-50 rounded-lg transition-colors">
-                    <Settings size={20} />
-                    <span className="font-medium">Settings</span>
-                </Link>
-            </div>
+
         </aside>
     );
 }

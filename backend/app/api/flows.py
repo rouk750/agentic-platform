@@ -37,6 +37,11 @@ def update_flow(flow_id: int, flow_update: FlowUpdate, session: Session = Depend
     if not db_flow:
         raise HTTPException(status_code=404, detail="Flow not found")
     
+    # Check if data changes
+    should_version = False
+    if flow_update.data and flow_update.data != db_flow.data:
+        should_version = True
+
     flow_data = flow_update.model_dump(exclude_unset=True)
     for key, value in flow_data.items():
         setattr(db_flow, key, value)
@@ -45,6 +50,16 @@ def update_flow(flow_id: int, flow_update: FlowUpdate, session: Session = Depend
     session.add(db_flow)
     session.commit()
     session.refresh(db_flow)
+
+    if should_version:
+        version = FlowVersion(
+            flow_id=db_flow.id,
+            data=db_flow.data,
+            created_at=datetime.utcnow()
+        )
+        session.add(version)
+        session.commit()
+
     return db_flow
 
 @router.delete("/flows/{flow_id}")
@@ -52,6 +67,66 @@ def delete_flow(flow_id: int, session: Session = Depends(get_session)):
     flow = session.get(Flow, flow_id)
     if not flow:
         raise HTTPException(status_code=404, detail="Flow not found")
+        
+    # Cascade delete versions? SQLModel relationships usually need configuration for cascade.
+    # For now, manual delete of versions is safer if relationship isn't set up with cascade.
+    versions = session.exec(select(FlowVersion).where(FlowVersion.flow_id == flow_id)).all()
+    for v in versions:
+        session.delete(v)
+        
     session.delete(flow)
     session.commit()
     return {"ok": True}
+    
+from app.models.flow_version import FlowVersion
+from app.schemas.flow_version import FlowVersionRead
+
+@router.get("/flows/{flow_id}/versions", response_model=List[FlowVersionRead])
+def read_flow_versions(flow_id: int, session: Session = Depends(get_session)):
+    # Check flow exists
+    flow = session.get(Flow, flow_id)
+    if not flow:
+        raise HTTPException(status_code=404, detail="Flow not found")
+        
+    versions = session.exec(select(FlowVersion).where(FlowVersion.flow_id == flow_id).order_by(FlowVersion.created_at.desc())).all()
+    return versions
+
+@router.delete("/flows/{flow_id}/versions/{version_id}")
+def delete_flow_version(flow_id: int, version_id: int, session: Session = Depends(get_session)):
+    flow = session.get(Flow, flow_id)
+    if not flow:
+        raise HTTPException(status_code=404, detail="Flow not found")
+        
+    version = session.get(FlowVersion, version_id)
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+        
+    if version.flow_id != flow_id:
+        raise HTTPException(status_code=400, detail="Version does not belong to this flow")
+        
+    session.delete(version)
+    session.commit()
+    return {"ok": True}
+
+@router.post("/flows/{flow_id}/versions/{version_id}/restore", response_model=FlowRead)
+def restore_flow_version(flow_id: int, version_id: int, session: Session = Depends(get_session)):
+    flow = session.get(Flow, flow_id)
+    if not flow:
+        raise HTTPException(status_code=404, detail="Flow not found")
+        
+    version = session.get(FlowVersion, version_id)
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+        
+    if version.flow_id != flow_id:
+        raise HTTPException(status_code=400, detail="Version does not belong to this flow")
+        
+    # Update flow with version data
+    flow.data = version.data
+    # Also unarchive if restoring? Let's keep it simple for now, user manually unarchives.
+    flow.updated_at = datetime.utcnow()
+    
+    session.add(flow)
+    session.commit()
+    session.refresh(flow)
+    return flow

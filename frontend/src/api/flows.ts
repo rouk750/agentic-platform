@@ -5,6 +5,7 @@ export interface Flow {
     id?: number;
     name: string;
     description?: string;
+    is_archived?: boolean;
     data: string; // JSON string
     created_at?: string;
     updated_at?: string;
@@ -46,5 +47,29 @@ export const flowApi = {
     delete: async (id: number): Promise<void> => {
         const baseUrl = await getBaseUrl();
         await axios.delete(`${baseUrl}/flows/${id}`);
+    },
+
+    getVersions: async (flowId: number): Promise<any[]> => {
+        const baseUrl = await getBaseUrl();
+        const response = await fetch(`${baseUrl}/flows/${flowId}/versions`);
+        if (!response.ok) throw new Error('Failed to fetch versions');
+        return response.json();
+    },
+
+    restoreVersion: async (flowId: number, versionId: number): Promise<Flow> => {
+        const baseUrl = await getBaseUrl();
+        const response = await fetch(`${baseUrl}/flows/${flowId}/versions/${versionId}/restore`, {
+            method: 'POST'
+        });
+        if (!response.ok) throw new Error('Failed to restore version');
+        return response.json();
+    },
+
+    deleteVersion: async (flowId: number, versionId: number): Promise<void> => {
+        const baseUrl = await getBaseUrl();
+        const response = await fetch(`${baseUrl}/flows/${flowId}/versions/${versionId}`, {
+            method: 'DELETE'
+        });
+        if (!response.ok) throw new Error('Failed to delete version');
     }
 };
