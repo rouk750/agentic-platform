@@ -15,3 +15,11 @@ export interface LLMProfileCreate {
     api_key?: string;
     base_url?: string;
 }
+
+export interface LLMProfileUpdate {
+    name?: string;
+    provider?: string;
+    model_id?: string;
+    api_key?: string;
+    base_url?: string;
+}

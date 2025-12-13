@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Plus, LayoutGrid, Box, Palette, Info } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { ModelList } from '../features/settings/ModelList';
 import { AddModelDialog } from '../features/settings/AddModelDialog';
-import { getModels, deleteModel } from '../api/settings';
+import { getModels, deleteModel, testSavedModel } from '../api/settings';
 import type { LLMProfile } from '../types/settings';
 import { toast } from 'sonner';
 
@@ -12,6 +12,7 @@ export default function SettingsPage() {
     const [models, setModels] = useState<LLMProfile[]>([]);
     const { section } = useParams();
     const [isAddOpen, setIsAddOpen] = useState(false);
+    const [editingModel, setEditingModel] = useState<LLMProfile | null>(null);
     const [loading, setLoading] = useState(true);
 
     // Default to 'models' if no section provided (though routing should handle this)
@@ -47,6 +48,34 @@ export default function SettingsPage() {
         }
     };
 
+    const handleEdit = (model: LLMProfile) => {
+        setEditingModel(model);
+        setIsAddOpen(true);
+    };
+
+    const handleTest = async (id: number): Promise<boolean> => {
+        try {
+            const success = await testSavedModel(id);
+            if (success) {
+                toast.success('Connection verification successful');
+            } else {
+                toast.error('Connection verification failed');
+            }
+            return success;
+        } catch (error) {
+            console.error('Test failed', error);
+            toast.error('Test failed');
+            return false;
+        }
+    };
+
+    const handleAddDialogChange = (open: boolean) => {
+        setIsAddOpen(open);
+        if (!open) {
+            setEditingModel(null);
+        }
+    };
+
     const renderContent = () => {
         switch (activeSection) {
             case 'models':
@@ -69,13 +98,19 @@ export default function SettingsPage() {
                         {loading ? (
                             <div className="text-center py-12">Loading...</div>
                         ) : (
-                            <ModelList models={models} onDelete={handleDelete} />
+                            <ModelList
+                                models={models}
+                                onDelete={handleDelete}
+                                onEdit={handleEdit}
+                                onTest={handleTest}
+                            />
                         )}
 
                         <AddModelDialog
                             open={isAddOpen}
-                            onOpenChange={setIsAddOpen}
+                            onOpenChange={handleAddDialogChange}
                             onModelAdded={fetchModels}
+                            modelToEdit={editingModel}
                         />
                     </div>
                 );
