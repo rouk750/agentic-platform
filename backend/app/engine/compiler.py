@@ -131,21 +131,21 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
             elif not t['handle'] or t['handle'] == 'default' or t['handle'] == 'output':
                 default_target_for_tool = t['target']
         
-            if has_tool_handle:
-                def route_tool(state, config=None, t_target=tool_call_target, d_target=default_target_for_tool):
-                    messages = state.get('messages', [])
-                    if messages and hasattr(messages[-1], 'tool_calls') and messages[-1].tool_calls:
-                        return t_target
-                    return d_target if d_target else END
+        if has_tool_handle:
+            def route_tool(state, config=None, t_target=tool_call_target, d_target=default_target_for_tool):
+                messages = state.get('messages', [])
+                if messages and hasattr(messages[-1], 'tool_calls') and messages[-1].tool_calls:
+                    return t_target
+                return d_target if d_target else END
 
-                path_map = {tool_call_target: tool_call_target}
-                if default_target_for_tool:
-                    path_map[default_target_for_tool] = default_target_for_tool
-                else:
-                    path_map[END] = END
-                
-                workflow.add_conditional_edges(source_id, route_tool, path_map)
-                continue
+            path_map = {tool_call_target: tool_call_target}
+            if default_target_for_tool:
+                path_map[default_target_for_tool] = default_target_for_tool
+            else:
+                path_map[END] = END
+            
+            workflow.add_conditional_edges(source_id, route_tool, path_map)
+            continue
 
         # --- 2. Explicit Router Node Logic ---
         if source_node_type == 'router':

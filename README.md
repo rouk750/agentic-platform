@@ -75,6 +75,15 @@ L'implémentation repose sur `backend/app/engine/dspy_optimizer.py` et `dspy_uti
 *   **REST** : Endpoints CRUD pour les modèles, endpoint `/optimize` pour lancer le training DSPy.
 *   **WebSocket** : Streaming temps réel des tokens et événements d'exécution.
 
+### 3.4. Tests Backend
+Les tests backend sont structurés pour garantir la fiabilité des composants clés :
+*   **Structure** :
+    *   `nodes/` : Tests unitaires des nœuds (Agent, SmartNode, etc.).
+    *   `tools/` : Validation des outils (OCR, CSV, etc.).
+    *   `engine/` : Tests du moteur d'exécution et de l'optimiseur DSPy.
+    *   `api/` : Tests d'intégration des endpoints API.
+*   **Exécution** : Lancer `poetry run pytest backend/tests` pour exécuter la suite complète.
+
 ---
 
 ## 4. Roadmap & Futur (Beta)
