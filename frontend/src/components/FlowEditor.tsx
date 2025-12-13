@@ -54,9 +54,37 @@ function FlowEditorInstance() {
     // Check for dirty state
     useEffect(() => {
         if (!loading && lastSavedData) {
-            const currentGraph = toObject();
-            const currentDataString = JSON.stringify(currentGraph);
-            setIsDirty(currentDataString !== lastSavedData);
+            try {
+                const cleanNode = (node: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { selected, dragging, resizing, positionAbsolute, ...rest } = node;
+                    return rest;
+                };
+                const cleanEdge = (edge: any) => {
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    const { selected, ...rest } = edge;
+                    return rest;
+                };
+
+                const saved = JSON.parse(lastSavedData);
+                const savedNodes = saved.nodes?.map(cleanNode) || [];
+                const savedEdges = saved.edges?.map(cleanEdge) || [];
+
+                const current = toObject();
+                // Ensure we handle potential undefined/nulls safely, though toObject should return arrays
+                const currentNodes = current.nodes.map(cleanNode);
+                const currentEdges = current.edges.map(cleanEdge);
+
+                const isNodesChanged = JSON.stringify(savedNodes) !== JSON.stringify(currentNodes);
+                const isEdgesChanged = JSON.stringify(savedEdges) !== JSON.stringify(currentEdges);
+
+                // Check if name changed (optional, but good practice)
+                // const isNameChanged = flowName !== initialFlowName; // we'd need to store initial name
+
+                setIsDirty(isNodesChanged || isEdgesChanged);
+            } catch (e) {
+                console.error("Error checking dirty state", e);
+            }
         }
     }, [nodes, edges, flowName, lastSavedData, toObject, loading]);
 
