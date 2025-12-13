@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { LLMProfile, LLMProfileCreate } from '../types/settings';
+import type { LLMProfile, LLMProfileCreate, LLMProfileUpdate } from '../types/settings';
 
 const getBaseUrl = async () => {
     return "http://localhost:8000/api";
@@ -20,6 +20,22 @@ export const createModel = async (profile: LLMProfileCreate): Promise<LLMProfile
 export const deleteModel = async (modelId: number): Promise<void> => {
     const baseUrl = await getBaseUrl();
     await axios.delete(`${baseUrl}/settings/models/${modelId}`);
+};
+
+export const updateModel = async (modelId: number, profile: LLMProfileUpdate): Promise<LLMProfile> => {
+    const baseUrl = await getBaseUrl();
+    const response = await axios.put(`${baseUrl}/settings/models/${modelId}`, profile);
+    return response.data;
+};
+
+export const testSavedModel = async (modelId: number): Promise<boolean> => {
+    try {
+        const baseUrl = await getBaseUrl();
+        await axios.post(`${baseUrl}/settings/models/${modelId}/test`);
+        return true;
+    } catch {
+        return false;
+    }
 };
 
 export const scanOllamaModels = async (): Promise<string[]> => {

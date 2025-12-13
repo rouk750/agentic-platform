@@ -4,7 +4,7 @@ from typing import List
 
 from app.database import get_session
 from app.models.settings import LLMProfile, ProviderType
-from app.schemas.settings import LLMProfileCreate
+from app.schemas.settings import LLMProfileCreate, LLMProfileUpdate
 from app.services.security import save_api_key, delete_api_key, get_api_key
 from pydantic import BaseModel
 from typing import Optional
@@ -56,11 +56,62 @@ def delete_model_profile(model_id: int, session: Session = Depends(get_session))
     session.delete(profile)
     session.commit()
     
+    
     # Delete from Keyring
     if profile.api_key_ref:
         delete_api_key(profile.api_key_ref)
         
     return {"ok": True}
+
+@router.put("/models/{model_id}", response_model=LLMProfile)
+def update_model_profile(model_id: int, profile_update: LLMProfileUpdate, session: Session = Depends(get_session)):
+    db_profile = session.get(LLMProfile, model_id)
+    if not db_profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    if profile_update.name is not None:
+        db_profile.name = profile_update.name
+    if profile_update.provider is not None:
+        db_profile.provider = ProviderType(profile_update.provider)
+    if profile_update.model_id is not None:
+        db_profile.model_id = profile_update.model_id
+    if profile_update.base_url is not None:
+        db_profile.base_url = profile_update.base_url
+    
+    # Handle API Key rotation
+    if profile_update.api_key:
+        # Delete old key if exists
+        if db_profile.api_key_ref:
+            delete_api_key(db_profile.api_key_ref)
+        # Save new key
+        db_profile.api_key_ref = save_api_key(profile_update.api_key)
+    
+    session.add(db_profile)
+    session.commit()
+    session.refresh(db_profile)
+    return db_profile
+
+@router.post("/models/{model_id}/test")
+async def test_saved_model_connection(model_id: int, session: Session = Depends(get_session)):
+    profile = session.get(LLMProfile, model_id)
+    if not profile:
+        raise HTTPException(status_code=404, detail="Profile not found")
+
+    try:
+        from app.providers.factory import LLMProviderFactory
+        provider = LLMProviderFactory.get_provider(profile.provider)
+        
+        # Retrieve API key if reference exists
+        api_key = None
+        if profile.api_key_ref:
+            api_key = get_api_key(profile.api_key_ref)
+            
+        await provider.test_connection(profile, api_key=api_key)
+        return {"status": "ok"}
+    except Exception as e:
+        # import traceback
+        # traceback.print_exc()
+        raise HTTPException(status_code=400, detail=str(e))
 
 class TestConnectionRequest(BaseModel):
     provider: str
