@@ -13,4 +13,7 @@ export interface SmartNodeData extends NodeData {
     inputs?: IOSpec[];
     outputs?: IOSpec[];
     examples?: any[]; // Peut être affiné plus tard si structure connue
+    // Template Versioning
+    _templateId?: number;
+    _templateVersion?: number;
 }

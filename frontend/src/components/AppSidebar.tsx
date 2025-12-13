@@ -38,8 +38,9 @@ export default function AppSidebar() {
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
                 {/* Flows Section */}
                 <div className="space-y-1">
-                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">Flows</div>
-                    <NavItem to="/flows" icon={GitFork} label="Gestion des flows" />
+                    <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider px-3 mb-2">Workspace</div>
+                    <NavItem to="/flows" icon={GitFork} label="Flows" />
+                    <NavItem to="/agents" icon={Box} label="Agents & Nodes" />
                 </div>
 
                 {/* Settings Section */}
