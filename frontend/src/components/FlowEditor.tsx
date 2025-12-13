@@ -42,12 +42,36 @@ function FlowEditorInstance() {
     const [flowName, setFlowName] = useState("Untitled Flow");
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [lastSavedData, setLastSavedData] = useState<string | null>(null);
+    const [isDirty, setIsDirty] = useState(false);
     const resetRunState = useRunStore((state) => state.reset);
 
     // Reset run state on mount to prevent stale highlights/messages
     useEffect(() => {
         resetRunState();
     }, [resetRunState]);
+
+    // Check for dirty state
+    useEffect(() => {
+        if (!loading && lastSavedData) {
+            const currentGraph = toObject();
+            const currentDataString = JSON.stringify(currentGraph);
+            setIsDirty(currentDataString !== lastSavedData);
+        }
+    }, [nodes, edges, flowName, lastSavedData, toObject, loading]);
+
+    // Warn on browser unload
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = ''; // Chrome requires returnValue to be set
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [isDirty]);
 
     // Load flow data if ID is present
     useEffect(() => {
@@ -64,6 +88,12 @@ function FlowEditorInstance() {
                         if (parsedData.nodes) setNodes(parsedData.nodes);
                         if (parsedData.edges) setEdges(parsedData.edges);
                         // Viewport restore could be added here
+
+                        // Set initial saved data state for dirty checking
+                        // We need to reconstruct what toObject() would return to match exactly
+                        // Or better, wait for nodes/edges to be set and then take a snapshot? 
+                        // Actually, flow.data is exactly what we saved.
+                        setLastSavedData(flow.data);
                     }
                 } catch (error: any) {
                     console.error("Failed to load flow", error);
@@ -80,6 +110,8 @@ function FlowEditorInstance() {
             setEdges([]);
             setFlowName("New Untitled Flow");
             setLoading(false);
+            // Initial state for new flow
+            setLastSavedData(JSON.stringify({ nodes: [], edges: [], viewport: { x: 0, y: 0, zoom: 1 } }));
         }
     }, [id, setNodes, setEdges, navigate]);
 
@@ -173,6 +205,8 @@ function FlowEditorInstance() {
                     data: dataString
                 });
                 toast.success("Flow saved successfully");
+                setLastSavedData(dataString);
+                setIsDirty(false);
             } else {
                 // Create new
                 const newFlow = await flowApi.create({
@@ -180,6 +214,8 @@ function FlowEditorInstance() {
                     data: dataString
                 });
                 toast.success("Flow created");
+                setLastSavedData(dataString);
+                setIsDirty(false);
                 navigate(`/editor/${newFlow.id}`, { replace: true });
             }
         } catch (error: any) {
@@ -188,6 +224,15 @@ function FlowEditorInstance() {
         } finally {
             setSaving(false);
         }
+    };
+
+    const handleBack = () => {
+        if (isDirty) {
+            if (!window.confirm("You have unsaved changes. Are you sure you want to leave?")) {
+                return;
+            }
+        }
+        navigate('/');
     };
 
     if (loading) {
@@ -207,7 +252,7 @@ function FlowEditorInstance() {
             <div className="absolute top-4 left-4 right-4 z-10 flex justify-between items-start pointer-events-none">
                 <div className="pointer-events-auto">
                     <button
-                        onClick={() => navigate('/')}
+                        onClick={handleBack}
                         className="flex items-center gap-2 px-3 py-2 bg-white border border-slate-200 text-slate-600 rounded-lg shadow-sm hover:bg-slate-50 transition-colors"
                     >
                         <ArrowLeft size={16} /> Back
@@ -226,10 +271,10 @@ function FlowEditorInstance() {
                         <button
                             onClick={handleSave}
                             disabled={saving}
-                            className="flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${isDirty ? 'bg-amber-600 hover:bg-amber-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
                         >
                             {saving ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
-                            {saving ? 'Saving...' : 'Save'}
+                            {saving ? 'Saving...' : (isDirty ? 'Save*' : 'Save')}
                         </button>
                     </div>
                 </Panel>

@@ -3,9 +3,11 @@ import FlowEditor from './components/FlowEditor';
 import { ChatPanel } from './features/execution/ChatPanel';
 import { Toaster } from 'sonner';
 
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import SettingsPage from './pages/SettingsPage';
 import DashboardPage from './pages/DashboardPage';
+import FlowsPage from './pages/FlowsPage';
+import MainLayout from './components/MainLayout';
 
 function EditorLayout() {
     return (
@@ -27,10 +29,17 @@ function App() {
     return (
         <BrowserRouter>
             <Routes>
-                <Route path="/" element={<DashboardPage />} />
+                {/* Main App Layout Routes */}
+                <Route element={<MainLayout />}>
+                    <Route path="/" element={<Navigate to="/flows" replace />} />
+                    <Route path="/flows" element={<FlowsPage />} />
+                    <Route path="/settings" element={<Navigate to="/settings/models" replace />} />
+                    <Route path="/settings/:section" element={<SettingsPage />} />
+                </Route>
+
+                {/* Editor Routes (No Main Sidebar) */}
                 <Route path="/editor/new" element={<EditorLayout />} />
                 <Route path="/editor/:id" element={<EditorLayout />} />
-                <Route path="/settings" element={<SettingsPage />} />
             </Routes>
             <Toaster position="top-center" richColors />
         </BrowserRouter>

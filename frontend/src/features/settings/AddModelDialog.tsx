@@ -99,13 +99,13 @@ export function AddModelDialog({ open, onOpenChange, onModelAdded }: AddModelDia
         <Dialog.Root open={open} onOpenChange={onOpenChange}>
             <Dialog.Portal>
                 <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdro-blur-sm" />
-                <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[500px] translate-x-[-50%] translate-y-[-50%] rounded-lg bg-white p-6 shadow-lg focus:outline-none z-50 dark:bg-zinc-900 border dark:border-zinc-800">
+                <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[500px] translate-x-[-50%] translate-y-[-50%] rounded-lg bg-slate-100 p-6 shadow-lg focus:outline-none z-50 border border-slate-200">
                     <div className="flex items-center justify-between mb-4">
-                        <Dialog.Title className="text-lg font-semibold dark:text-white">
+                        <Dialog.Title className="text-lg font-semibold text-slate-900">
                             Add New Model
                         </Dialog.Title>
                         <Dialog.Close asChild>
-                            <button className="text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300" aria-label="Close">
+                            <button className="text-slate-500 hover:text-slate-700" aria-label="Close">
                                 <X size={20} />
                             </button>
                         </Dialog.Close>
@@ -113,20 +113,20 @@ export function AddModelDialog({ open, onOpenChange, onModelAdded }: AddModelDia
 
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                         <div>
-                            <label className="block text-sm font-medium mb-1 dark:text-zinc-300">Name</label>
+                            <label className="block text-sm font-medium mb-1 text-slate-700">Name</label>
                             <input
                                 {...register('name', { required: true })}
-                                className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
+                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
                                 placeholder="My Awesome Model"
                             />
                             {errors.name && <span className="text-xs text-red-500">Name is required</span>}
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1 dark:text-zinc-300">Provider</label>
+                            <label className="block text-sm font-medium mb-1 text-slate-700">Provider</label>
                             <select
                                 {...register('provider')}
-                                className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
+                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
                             >
                                 {PROVIDERS.map(p => (
                                     <option key={p.value} value={p.value}>{p.label}</option>
@@ -137,29 +137,29 @@ export function AddModelDialog({ open, onOpenChange, onModelAdded }: AddModelDia
                         {['ollama', 'lmstudio'].includes(selectedProvider) ? (
                             <>
                                 <div>
-                                    <label className="block text-sm font-medium mb-1 dark:text-zinc-300">Model ID</label>
+                                    <label className="block text-sm font-medium mb-1 text-slate-700">Model ID</label>
                                     {scanning ? (
-                                        <div className="flex items-center gap-2 text-sm text-zinc-500">
+                                        <div className="flex items-center gap-2 text-sm text-slate-500">
                                             <Loader2 className="animate-spin" size={14} /> Scanning Local Models...
                                         </div>
                                     ) : (
                                         <div className="flex gap-2">
                                             <select
                                                 {...register('model_id', { required: true })}
-                                                className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
+                                                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
                                             >
                                                 <option value="">Select a model...</option>
                                                 {scannedModels.map(m => <option key={m} value={m}>{m}</option>)}
                                             </select>
-                                            <button type="button" onClick={scanModels} className="text-xs bg-zinc-100 px-2 rounded border dark:bg-zinc-800 dark:text-white">Rescan</button>
+                                            <button type="button" onClick={scanModels} className="text-xs bg-white px-2 rounded border border-slate-300 text-slate-700 hover:bg-slate-50">Rescan</button>
                                         </div>
                                     )}
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-1 dark:text-zinc-300">Base URL</label>
+                                    <label className="block text-sm font-medium mb-1 text-slate-700">Base URL</label>
                                     <input
                                         {...register('base_url')}
-                                        className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
+                                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
                                         placeholder={selectedProvider === 'lmstudio' ? "http://localhost:1234/v1" : "http://localhost:11434"}
                                     />
                                 </div>
@@ -167,19 +167,19 @@ export function AddModelDialog({ open, onOpenChange, onModelAdded }: AddModelDia
                         ) : (
                             <>
                                 <div>
-                                    <label className="block text-sm font-medium mb-1 dark:text-zinc-300">Model ID</label>
+                                    <label className="block text-sm font-medium mb-1 text-slate-700">Model ID</label>
                                     <input
                                         {...register('model_id', { required: true })}
-                                        className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
+                                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
                                         placeholder={selectedProvider === 'openai' ? 'gpt-4-turbo' : 'claude-3-opus'}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium mb-1 dark:text-zinc-300">API Key</label>
+                                    <label className="block text-sm font-medium mb-1 text-slate-700">API Key</label>
                                     <input
                                         type="password"
                                         {...register('api_key', { required: true })}
-                                        className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"
+                                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-900"
                                         placeholder="sk-..."
                                     />
                                 </div>
@@ -192,9 +192,9 @@ export function AddModelDialog({ open, onOpenChange, onModelAdded }: AddModelDia
                                 onClick={onTestConnection}
                                 disabled={testing}
                                 className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors
-                  ${testStatus === 'success' ? 'text-green-600 bg-green-50' : ''}
-                  ${testStatus === 'error' ? 'text-red-600 bg-red-50' : ''}
-                  ${testStatus === 'idle' ? 'text-zinc-600 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300' : ''}
+                  ${testStatus === 'success' ? 'text-green-700 bg-green-50 border border-green-200' : ''}
+                  ${testStatus === 'error' ? 'text-red-700 bg-red-50 border border-red-200' : ''}
+                  ${testStatus === 'idle' ? 'text-slate-700 bg-white hover:bg-slate-50 border border-slate-300' : ''}
                 `}
                             >
                                 {testing ? <Loader2 className="animate-spin" size={16} /> :
