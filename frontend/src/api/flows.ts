@@ -38,7 +38,7 @@ export const flowApi = {
         return res.data;
     },
 
-    update: async (id: number, flow: Flow): Promise<Flow> => {
+    update: async (id: number, flow: Partial<Flow>): Promise<Flow> => {
         const baseUrl = await getBaseUrl();
         const res = await axios.put(`${baseUrl}/flows/${id}`, flow);
         return res.data;

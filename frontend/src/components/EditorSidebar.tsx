@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { templateApi, AgentTemplate } from '../api/templates';
 import { toast } from 'sonner';
 
-export default function Sidebar() {
+export default function EditorSidebar() {
     const [templates, setTemplates] = useState<AgentTemplate[]>([]);
     const [loading, setLoading] = useState(true);
 

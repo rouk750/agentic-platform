@@ -1,46 +1,95 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+// import { useNavigate } from 'react-router-dom';
 import { templateApi, AgentTemplate, AgentTemplateVersion } from '../api/templates';
 import { Trash2, History, RotateCcw, Loader2, Plus, Archive, ArchiveRestore, Filter, Bot, BrainCircuit, Pencil } from 'lucide-react';
-import { toast } from 'sonner';
+// import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import AgentTemplateDialog from '../components/AgentTemplateDialog';
 
-type FilterStatus = 'active' | 'archived' | 'all';
-type SortOption = 'updated_desc' | 'updated_asc' | 'name_asc';
+import { useVersionHistory } from '../hooks/useVersionHistory';
+import { useSortAndFilter, SortOption } from '../hooks/useSortAndFilter';
+import { useApiResource } from '../hooks/useApiResource';
 
 export default function AgentsPage() {
     // const navigate = useNavigate(); // Navigation logic for editing agents might be different (modal vs page)
-    const [templates, setTemplates] = useState<AgentTemplate[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
-    const [versions, setVersions] = useState<AgentTemplateVersion[]>([]);
-    const [loadingVersions, setLoadingVersions] = useState(false);
+    // API Resource Hook
+    const {
+        items: templates,
+        setItems: setTemplates,
+        loading,
+        fetchAll: loadTemplates,
+        create: createTemplate,
+        update: updateTemplate,
+        remove: removeTemplate
+    } = useApiResource<AgentTemplate>({
+        api: templateApi,
+        messages: {
+            createSuccess: 'Template created successfully',
+            updateSuccess: 'Template updated successfully',
+            deleteSuccess: 'Template deleted',
+            loadError: 'Failed to load templates'
+        },
+        onAfterUpdate: (updated) => {
+            // Refresh versions if this template's history is open
+            if (selectedTemplateId === updated.id) {
+                handleViewVersions(updated.id!); // Re-fetch versions for the updated template
+            }
+        },
+        onAfterDelete: (id) => {
+            if (selectedTemplateId === id) {
+                resetVersions(); // Reset version history if the deleted template's history was open
+            }
+        }
+    });
+
+    useEffect(() => {
+        loadTemplates();
+    }, [loadTemplates]);
+
+    // Custom Hooks - Version History
+    const {
+        selectedId: selectedTemplateId,
+        versions,
+        loading: loadingVersions,
+        handleViewVersions,
+        handleRestoreVersion,
+        handleDeleteVersion: onDeleteVersion,
+        reset: resetVersions
+    } = useVersionHistory<AgentTemplateVersion, AgentTemplate>({
+        fetchVersions: templateApi.getVersions,
+        restoreVersion: templateApi.restoreVersion,
+        deleteVersion: templateApi.deleteVersion,
+        onRestoreSuccess: (restored) => {
+            setTemplates(prev => prev.map(t => t.id === restored.id ? restored : t));
+        }
+    });
+
+    // Custom Hooks - Sort and Filter
+    const {
+        filterStatus,
+        setFilterStatus,
+        sortBy,
+        setSortBy,
+        filteredAndSortedItems: filteredTemplates
+    } = useSortAndFilter<AgentTemplate>({
+        items: templates,
+        filterPredicate: (item, status) => {
+            if (status === 'all') return true;
+            if (status === 'active') return !item.is_archived;
+            if (status === 'archived') return !!item.is_archived;
+            return true;
+        },
+        sortComparator: (a, b, sortOption) => {
+            if (sortOption === 'name_asc') return a.name.localeCompare(b.name);
+            const dateA = new Date(a.updated_at || 0).getTime();
+            const dateB = new Date(b.updated_at || 0).getTime();
+            return sortOption === 'updated_desc' ? dateB - dateA : dateA - dateB;
+        }
+    });
 
     // Dialog State
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingTemplate, setEditingTemplate] = useState<AgentTemplate | null>(null);
-
-    // Filters and Sort state
-    const [filterStatus, setFilterStatus] = useState<FilterStatus>('active');
-    const [sortBy, setSortBy] = useState<SortOption>('updated_desc');
-
-    useEffect(() => {
-        loadTemplates();
-    }, []);
-
-    const loadTemplates = async () => {
-        try {
-            setLoading(true);
-            const data = await templateApi.getAll();
-            setTemplates(data);
-        } catch (error) {
-            console.error("Failed to load templates", error);
-            toast.error("Failed to load templates");
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleOpenCreate = () => {
         setEditingTemplate(null);
@@ -53,118 +102,26 @@ export default function AgentsPage() {
     };
 
     const handleSaveTemplate = async (templateData: Partial<AgentTemplate>) => {
-        try {
-            if (editingTemplate) {
-                // Update
-                const updated = await templateApi.update(editingTemplate.id!, templateData);
-                setTemplates(templates.map(t => t.id === updated.id ? updated : t));
-
-                // Refresh versions if this template's history is open
-                if (selectedTemplateId === updated.id) {
-                    const newVersions = await templateApi.getVersions(updated.id!);
-                    setVersions(newVersions);
-                }
-
-                toast.success("Template updated successfully");
-            } else {
-                // Create
-                const created = await templateApi.create(templateData as AgentTemplate);
-                setTemplates([created, ...templates]);
-                toast.success("Template created successfully");
-            }
-            setIsDialogOpen(false);
-        } catch (error) {
-            console.error("Failed to save template", error);
-            toast.error("Failed to save template");
-            throw error; // Re-throw for dialog to handle loading state if needed
+        if (editingTemplate) {
+            await updateTemplate(editingTemplate.id!, templateData);
+        } else {
+            await createTemplate(templateData as AgentTemplate);
         }
+        setIsDialogOpen(false);
     };
 
     const handleDeleteTemplate = async (id: number) => {
         if (!confirm("Are you sure you want to delete this template? This action cannot be undone.")) return;
-        try {
-            await templateApi.delete(id);
-            setTemplates(templates.filter(t => t.id !== id));
-            toast.success("Template deleted");
-            if (selectedTemplateId === id) {
-                setSelectedTemplateId(null);
-                setVersions([]);
-            }
-        } catch (error) {
-            console.error("Failed to delete template", error);
-            toast.error("Failed to delete template");
-        }
+        await removeTemplate(id); // Hook handles error and toast
     };
 
     const handleToggleArchive = async (template: AgentTemplate) => {
-        try {
-            await templateApi.update(template.id!, { is_archived: !template.is_archived });
-            setTemplates(templates.map(t => t.id === template.id ? { ...t, is_archived: !t.is_archived } : t));
-            toast.success(template.is_archived ? "Template unarchived" : "Template archived");
-        } catch (error) {
-            console.error("Failed to update status", error);
-            toast.error("Failed to update status");
-        }
+        await updateTemplate(template.id!, { is_archived: !template.is_archived });
     };
 
-    const handleViewVersions = async (templateId: number) => {
-        if (selectedTemplateId === templateId) {
-            setSelectedTemplateId(null);
-            setVersions([]);
-            return;
-        }
-
-        try {
-            setSelectedTemplateId(templateId);
-            setLoadingVersions(true);
-            const data = await templateApi.getVersions(templateId);
-            setVersions(data);
-        } catch (error) {
-            console.error("Failed to load versions", error);
-            toast.error("Failed to load versions");
-        } finally {
-            setLoadingVersions(false);
-        }
-    };
-
-    const handleRestoreVersion = async (templateId: number, versionId: number) => {
-        if (!confirm("Are you sure you want to restore this version?")) return;
-        try {
-            const restored = await templateApi.restoreVersion(templateId, versionId);
-            toast.success("Version restored successfully");
-            setTemplates(templates.map(t => t.id === templateId ? restored : t));
-        } catch (error) {
-            console.error("Failed to restore version", error);
-            toast.error("Failed to restore version");
-        }
-    };
-
-    const handleDeleteVersion = async (templateId: number, versionId: number) => {
-        if (!confirm("Are you sure you want to delete this version?")) return;
-        try {
-            await templateApi.deleteVersion(templateId, versionId);
-            toast.success("Version deleted");
-            setVersions(versions.filter(v => v.id !== versionId));
-        } catch (error) {
-            console.error("Failed to delete version", error);
-            toast.error("Failed to delete version");
-        }
-    };
-
-    // Filter and Sort Logic
-    const filteredTemplates = templates
-        .filter(t => {
-            if (filterStatus === 'all') return true;
-            if (filterStatus === 'active') return !t.is_archived;
-            if (filterStatus === 'archived') return t.is_archived;
-            return true;
-        })
-        .sort((a, b) => {
-            if (sortBy === 'name_asc') return a.name.localeCompare(b.name);
-            const dateA = new Date(a.updated_at || 0).getTime();
-            const dateB = new Date(b.updated_at || 0).getTime();
-            return sortBy === 'updated_desc' ? dateB - dateA : dateA - dateB;
-        });
+    // Wrapped handlers to match old signature or add specific logic
+    const handleViewVersionsClick = (id: number) => handleViewVersions(id);
+    const handleDeleteVersionClick = (templateId: number, versionId: number) => onDeleteVersion(templateId, versionId);
 
     return (
         <div className="min-h-screen bg-slate-50 p-8">
@@ -222,7 +179,7 @@ export default function AgentsPage() {
                             <Filter className="text-slate-400" size={24} />
                         </div>
                         <h3 className="text-lg font-medium text-slate-900 mb-1">No templates found</h3>
-                        <p className="text-slate-500 mb-4">You haven't created any templates yet.</p>
+                        <p className="text-slate-500 mb-4">You haven&apos;t created any templates yet.</p>
                         <button
                             onClick={handleOpenCreate}
                             className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2 rounded-lg transition-colors font-medium text-sm"
@@ -263,7 +220,7 @@ export default function AgentsPage() {
                                             {template.is_archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
                                         </button>
                                         <button
-                                            onClick={() => handleViewVersions(template.id!)}
+                                            onClick={() => handleViewVersionsClick(template.id!)}
                                             className={`p-2 rounded-lg transition-colors flex items-center gap-1.5 text-sm font-medium ${selectedTemplateId === template.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}
                                         >
                                             <History size={16} />
@@ -322,7 +279,7 @@ export default function AgentsPage() {
                                                                             <RotateCcw size={14} /> Restore
                                                                         </button>
                                                                         <button
-                                                                            onClick={() => handleDeleteVersion(template.id!, version.id)}
+                                                                            onClick={() => handleDeleteVersionClick(template.id!, version.id)}
                                                                             className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-md transition-colors"
                                                                             title="Delete Version"
                                                                         >
