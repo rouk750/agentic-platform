@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { ModelList } from '../features/settings/ModelList';
 import { AddModelDialog } from '../features/settings/AddModelDialog';

@@ -1,11 +1,13 @@
 import { Handle, Position, useReactFlow, type NodeProps, type Node } from '@xyflow/react';
 import { SmartNodeConfigDialog } from './SmartNodeConfigDialog';
 import { TechnicalInfoDialog } from './TechnicalInfoDialog';
-import { Sparkles, Settings2, Brain, Zap, Info } from 'lucide-react';
+import { Sparkles, Settings2, Brain, Zap, Info, History, Loader2 } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRunStore } from '../store/runStore';
 import type { SmartNodeData, SmartNodeMode } from '../types/smartNode';
+import { templateApi, type AgentTemplateVersion } from '../api/templates';
+import { toast } from 'sonner';
 
 type SmartNodeType = Node<SmartNodeData>;
 
@@ -16,9 +18,59 @@ export function SmartNode({ id, data, selected }: NodeProps<SmartNodeType>) {
     const [configOpen, setConfigOpen] = useState(false);
     const [infoOpen, setInfoOpen] = useState(false);
 
+    // Template Versioning State
+    const [versions, setVersions] = useState<AgentTemplateVersion[]>([]);
+    const [versionsLoading, setVersionsLoading] = useState(false);
+    const isTemplate = !!data._templateId;
+
     const mode = (data.mode as SmartNodeMode) || "ChainOfThought"; // Default
     const inputs = data.inputs || [];
     const outputs = data.outputs || [];
+
+    // Fetch versions if this is a template node
+    useEffect(() => {
+        if (isTemplate && data._templateId) {
+            const loadVersions = async () => {
+                try {
+                    setVersionsLoading(true);
+                    const v = await templateApi.getVersions(data._templateId!);
+                    setVersions(v.sort((a, b) => b.version_number - a.version_number));
+                } catch (e) {
+                    console.error("Failed to load versions", e);
+                } finally {
+                    setVersionsLoading(false);
+                }
+            };
+            loadVersions();
+        }
+    }, [isTemplate, data._templateId]);
+
+    const handleVersionChange = (versionId: string) => {
+        const version = versions.find(v => v.id.toString() === versionId);
+        if (!version) return;
+
+        if (confirm(`Apply version ${version.version_number}? This will overwrite current settings.`)) {
+            try {
+                const config = JSON.parse(version.config);
+                // Map config back to SmartNodeData
+
+                const updates: Partial<SmartNodeData> = {
+                    _templateVersion: version.version_number,
+                    goal: config.goal,
+                    mode: config.mode,
+                    inputs: config.inputs,
+                    outputs: config.outputs,
+                    // Smart Node specific overrides if needed
+                };
+
+                updateNodeData(id, updates);
+                toast.success(`Restored version ${version.version_number}`);
+            } catch (e) {
+                console.error("Failed to apply version", e);
+                toast.error("Failed to apply version config");
+            }
+        }
+    };
 
     return (
         <>
@@ -38,14 +90,42 @@ export function SmartNode({ id, data, selected }: NodeProps<SmartNodeType>) {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                            <input
-                                className="font-bold text-slate-800 bg-transparent border-none p-0 focus:ring-0 w-full text-sm truncate placeholder:text-slate-400"
-                                value={String(data.label || "Smart Node")}
-                                onChange={(e) => updateNodeData(id, { label: e.target.value })}
-                                placeholder="Smart Node"
-                            />
-                            <span className="text-[9px] font-bold bg-amber-200 text-amber-700 px-1 py-0.5 rounded uppercase tracking-wide">Beta</span>
+                        <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <input
+                                    className="font-bold text-slate-800 bg-transparent border-none p-0 focus:ring-0 w-full text-sm truncate placeholder:text-slate-400"
+                                    value={String(data.label || "Smart Node")}
+                                    onChange={(e) => updateNodeData(id, { label: e.target.value })}
+                                    placeholder="Smart Node"
+                                />
+                                <span className="text-[9px] font-bold bg-amber-200 text-amber-700 px-1 py-0.5 rounded uppercase tracking-wide flex-shrink-0">kBeta</span>
+                            </div>
+
+                            {/* Version Selector */}
+                            {isTemplate && (
+                                <div className="flex-shrink-0 relative">
+                                    {versionsLoading ? (
+                                        <Loader2 size={12} className="animate-spin text-slate-400" />
+                                    ) : (
+                                        <div className="flex items-center gap-1 bg-amber-50/50 rounded px-1.5 py-0.5 border border-amber-100/50">
+                                            <History size={10} className="text-amber-600/50" />
+                                            <select
+                                                className="bg-transparent text-[10px] font-medium text-amber-800 outline-none border-none p-0 w-auto cursor-pointer appearance-none hover:text-amber-600"
+                                                value={data._templateVersion ? versions.find(v => v.version_number === data._templateVersion)?.id || '' : ''}
+                                                onChange={(e) => handleVersionChange(e.target.value)}
+                                                title="Select Template Version"
+                                            >
+                                                <option value="" disabled>v{data._templateVersion || '??'}</option>
+                                                {versions.map(v => (
+                                                    <option key={v.id} value={v.id}>
+                                                        v{v.version_number}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">

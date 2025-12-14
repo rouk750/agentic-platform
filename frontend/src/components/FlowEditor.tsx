@@ -57,7 +57,7 @@ function FlowEditorInstance() {
             try {
                 const cleanNode = (node: any) => {
                     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    const { selected, dragging, resizing, positionAbsolute, ...rest } = node;
+                    const { selected, dragging, resizing, positionAbsolute, measured, width, height, ...rest } = node;
                     return rest;
                 };
                 const cleanEdge = (edge: any) => {

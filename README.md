@@ -1,98 +1,143 @@
-# Spécifications Fonctionnelles et Techniques - Agentic Platform
+# Agentic Platform - Technical Documentation
 
-**Version** : Alpha 1.0 (Frozen)
-**Date** : 2025-12-11
+## 1. Project Overview
 
-Ce document de référence présente une vue d'ensemble de l'application "Agentic Platform", détaillant ses fonctionnalités, son architecture technique, et son implémentation.
+**Agentic Platform** is a desktop application for designing and executing local LLM agents.
+- **Frontend**: Electron, React, TypeScript, Vite, TailwindCSS.
+- **Backend**: Python, FastAPI, LangChain, DSPy.
 
-## 1. Résumé Fonctionnel
+## 2. Prerequisites
 
-L'application est une plateforme "Low-Code" locale permettant de concevoir, configurer et exécuter des agents intelligents basés sur des LLM (Large Language Models). Elle est distribuée sous la forme d'un exécutable de bureau (Electron).
-
-### Fonctionnalités Principales
-
-*   **Smart Nodes & Optimisation (NOUVEAU 🌟)** :
-    *   **Nœud Intelligent** : Configuration flexible des entrées et sorties (sans prompt engineering manuel).
-    *   **Training Data** : Import de données d'entraînement via CSV (Copier-coller ou Upload) avec mapping automatique des colonnes.
-    *   **Optimisation Automatique** : Utilisation du Framework **DSPy** pour optimiser les prompts ("Compile & Optimize") sur la base d'exemples.
-    *   **Configuration Avancée** : Réglage du nombre de rounds d'optimisation (1 à 50) pour contrôler la profondeur de recherche.
-
-*   **Gestion des Profils LLM (Settings)** :
-    *   **Multi-Provider** : Support unifié pour OpenAI, Anthropic, Azure, et **Local LLMs** (Ollama, LM Studio).
-    *   **Sécurité** : Stockage chiffré des clés API locales (via `keyring`).
-    *   **Test de Connexion** : Validation immédiate des credentials.
-
-*   **Éditeur Graphique d'Agents (Canvas)** :
-    *   Interface visuelle (basée sur des nœuds et des arcs) pour concevoir le flux d'exécution.
-    *   Support de différents types de nœuds : Agent, Smart Node, Outils, Routeurs logiques.
-
-*   **Exécution de Flux (Run)** :
-    *   Lancement des agents directement depuis l'interface via WebSocket.
-    *   Visualisation en temps réel (streaming tokens, mise en surbrillance).
+Ensure you have the following installed:
+- **Node.js** (v18+) & **npm**
+- **Python** (v3.10+)
+- **Poetry** (Python dependency manager)
 
 ---
 
-## 2. Architecture Technique
+## 3. Development Setup
 
-### Vue d'ensemble Stack
+### Backend (Python)
 
-*   **Application Desktop** : [Electron](https://www.electronjs.org/).
-*   **Frontend** : [React](https://react.dev/) + [Vite](https://vitejs.dev/) + [TailwindCSS](https://tailwindcss.com/).
-    *   **Graphe UI** : React Flow (@xyflow/react).
-*   **Backend** : [Python](https://www.python.org/) + [FastAPI](https://fastapi.tiangolo.com/).
-    *   **Orchestration** : [LangChain](https://www.langchain.com/) & [LangGraph](https://langchain-ai.github.io/langgraph/).
-    *   **Optimisation** : [DSPy](https://dspy.ai/) (v3.0+).
-    *   **Base de Données** : SQLite (via `SQLModel`).
+The backend handles the agent orchestration and AI logic.
 
-### Patrons de Conception (Design Patterns)
+1.  **Navigate to backend directory**:
+    ```bash
+    cd backend
+    ```
 
-1.  **LangChain-First Architecture** :
-    *   Utilisation de `dspy.LM` unifié pour interagir avec tous les modèles via LangChain/Community adapters.
-2.  **Compiler Pattern** :
-    *   Transformation du graphe JSON en `StateGraph` exécutable.
-    *   Compilation des Smart Nodes en modules DSPy optimisés (sauvegardés en JSON).
-3.  **Context-Safe Async** :
-    *   Utilisation de `dspy.context` pour garantir la thread-safety des paramètres globaux dans un environnement asynchrone (FastAPI).
+2.  **Install dependencies**:
+    ```bash
+    poetry install
+    ```
+
+3.  **Start Development Server**:
+    ```bash
+    poetry run start
+    ```
+    The API will run at `http://localhost:8000`.
+
+4.  **Run Tests**:
+    ```bash
+    poetry run pytest
+    ```
+
+### Frontend (Electron/React)
+
+The frontend provides the visual editor and execution interface.
+
+1.  **Navigate to frontend directory**:
+    ```bash
+    cd frontend
+    ```
+
+2.  **Install dependencies**:
+    ```bash
+    npm install
+    ```
+
+3.  **Start Development App**:
+    ```bash
+    npm run dev
+    ```
+    This will launch the Electron window and start the Vite dev server.
+    *Note: In dev mode, the frontend attempts to spawn the backend automatically if not already running, but running them separately gives better logs.*
+
+4.  **Debug Mode (DevTools)**:
+    To force open the Chromium Developer Tools (Console) on startup:
+    ```bash
+    DEBUG_NAV=true npm run dev
+    ```
+
+    To enable detailed logs from the Python backend:
+    ```bash
+    DEBUG_MODE=true npm run dev
+    ```
+
+    You can combine both:
+    ```bash
+    DEBUG_NAV=true DEBUG_MODE=true npm run dev
+    ```
+
+5.  **Linting & Type Checking**:
+    *   **Lint**: `npm run lint` (ESLint)
+    *   **Type Check**: `npm run type-check` (TypeScript)
+    *   **Build Check**: `npm run build` (Runs types + vite build)
 
 ---
 
-## 3. Implémentation Technique Détaillée
+## 4. Building for Production
 
-### 3.1. Moteur DSPy & Smart Nodes
-L'implémentation repose sur `backend/app/engine/dspy_optimizer.py` et `dspy_utils.py`.
-*   **BootstrapFewShot** : Algorithme utilisé pour sélectionner les meilleurs exemples ("Few-Shot") et optimiser la performance.
-*   **Métriques** : Actuellement basé sur `ExactMatch` (comparaison stricte sortie attendue vs réelle).
-*   **Persistence** : Les programmes compilés sont stockés dans `resources/smart_nodes/{node_id}_compiled.json`. Le Smart Node charge ce fichier à l'exécution s'il existe.
+To create an installable application (`.dmg` for macOS, `.exe` for Windows), follow these steps strictly in order.
 
-### 3.2. Gestion des Modèles
-*   **Modèle `LLMProfile`** : Stocke provider, model_id, base_url.
-*   **Providers Supportés** :
-    *   `openai`, `anthropic`, `azure`.
-    *   `ollama_chat` (via LangChain).
-    *   `lm_studio` (compatible OpenAI API, port 1234 par défaut).
+### Step 1: Build the Backend Executable
 
-### 3.3. API & Communication
-*   **REST** : Endpoints CRUD pour les modèles, endpoint `/optimize` pour lancer le training DSPy.
-*   **WebSocket** : Streaming temps réel des tokens et événements d'exécution.
+We compile the Python backend into a standalone executable using PyInstaller.
 
-### 3.4. Tests Backend
-Les tests backend sont structurés pour garantir la fiabilité des composants clés :
-*   **Structure** :
-    *   `nodes/` : Tests unitaires des nœuds (Agent, SmartNode, etc.).
-    *   `tools/` : Validation des outils (OCR, CSV, etc.).
-    *   `engine/` : Tests du moteur d'exécution et de l'optimiseur DSPy.
-    *   `api/` : Tests d'intégration des endpoints API.
-*   **Exécution** : Lancer `poetry run pytest backend/tests` pour exécuter la suite complète.
+```bash
+cd backend
+poetry run pyinstaller backend.spec
+```
+*This creates a `dist/backend` executable inside the `backend/` folder.*
+
+### Step 2: Build & Package the Application
+
+The Electron builder needs the backend executable from Step 1.
+
+```bash
+cd frontend
+# 1. Build the React application
+npm run build 
+
+# 2. Package the Electron app
+npx electron-builder
+```
+
+### Platform Specifics
+
+*   **macOS**:
+    *   Running `npx electron-builder` on macOS will output a `.dmg` in `frontend/dist/`.
+    *   You may need to sign the application to share it with others (Apple Developer Program required).
+
+*   **Windows**:
+    *   Running `npx electron-builder` on Windows will output an `.exe` installer (NSIS) in `frontend/dist/`.
+    *   Ensure you build on a Windows machine (or VM) to generate the Windows executable properly.
 
 ---
 
-## 4. Roadmap & Futur (Beta)
+## 5. Project Structure
 
-### 4.1. Améliorations DSPy
-*   **LLM-as-a-Judge** : Remplacer "Exact Match" par un juge IA pour évaluer des réponses subjectives.
-*   **Auto-Labeling** : Permettre l'optimisation avec seulement des Inputs (le Teacher génère les Outputs).
-*   **MIPRO** : Intégrer des optimiseurs avancés qui réécrivent aussi les instructions (pas seulement les exemples).
-
-### 4.2. Packaging & Distribution
-*   Générer les installateurs finaux `.exe` et `.dmg` (actuellement en mode dev).
-*   Signature de code pour éviter les alertes de sécurité Windows/Mac.
+```
+agentic-platform/
+├── backend/                # Python FastAPI Backend
+│   ├── app/                # App Logic
+│   ├── tests/              # Pytest Tests
+│   ├── backend.spec        # PyInstaller Config
+│   └── pyproject.toml      # Poetry Dependencies
+│
+├── frontend/               # Electron + React Frontend
+│   ├── electron/           # Main Process Code
+│   ├── src/                # Renderer Process (React, Components, Hooks)
+│   ├── package.json        # Node Dependencies
+│   └── vite.config.ts      # Vite Config
+```

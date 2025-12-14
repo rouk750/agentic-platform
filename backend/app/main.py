@@ -12,12 +12,14 @@ from app.api import tools
 from app.api import flows
 from app.api import smart_nodes
 from app.api import guardrails
+from app.api import agent_templates
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Load all models so that SQLModel knows about them
     from app.models import settings as settings_model
     from app.models import flow as flow_model
+    from app.models import agent_template as agent_template_model
     SQLModel.metadata.create_all(engine)
     yield
 
@@ -43,6 +45,7 @@ app.include_router(tools.router, prefix="/api", tags=["tools"])
 app.include_router(flows.router, prefix="/api", tags=["flows"])
 app.include_router(smart_nodes.router, prefix="/api", tags=["smart-nodes"])
 app.include_router(guardrails.router, prefix="/api", tags=["guardrails"])
+app.include_router(agent_templates.router, prefix="/api", tags=["agent-templates"])
 
 @app.get("/")
 def read_root():

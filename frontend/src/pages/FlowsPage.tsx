@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { flowApi, Flow } from '../api/flows';
-import { Trash2, History, RotateCcw, ArrowRight, Loader2, Plus, Archive, ArchiveRestore, Filter, SortDesc, SortAsc } from 'lucide-react';
-import { toast } from 'sonner';
+import { Trash2, History, RotateCcw, ArrowRight, Loader2, Plus, Archive, ArchiveRestore, Filter } from 'lucide-react';
+// import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
+import { useApiResource } from '../hooks/useApiResource';
+import { useVersionHistory } from '../hooks/useVersionHistory';
+import { useSortAndFilter, SortOption } from '../hooks/useSortAndFilter';
 
 interface FlowVersion {
     id: number;
@@ -12,131 +15,105 @@ interface FlowVersion {
     data: string;
 }
 
-type FilterStatus = 'active' | 'archived' | 'all';
-type SortOption = 'updated_desc' | 'updated_asc' | 'name_asc';
+// type FilterStatus = 'active' | 'archived' | 'all';
 
 export default function FlowsPage() {
     const navigate = useNavigate();
-    const [flows, setFlows] = useState<Flow[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [selectedFlowId, setSelectedFlowId] = useState<number | null>(null);
-    const [versions, setVersions] = useState<FlowVersion[]>([]);
-    const [loadingVersions, setLoadingVersions] = useState(false);
-
-    // Filters and Sort state
-    const [filterStatus, setFilterStatus] = useState<FilterStatus>('active');
-    const [sortBy, setSortBy] = useState<SortOption>('updated_desc');
+    const {
+        items: flows,
+        setItems: setFlows,
+        loading,
+        fetchAll: loadFlows,
+        remove: removeFlow,
+        update: updateFlow
+    } = useApiResource<Flow>({
+        api: flowApi,
+        messages: {
+            deleteSuccess: 'Flow deleted',
+            loadError: 'Failed to load flows',
+            updateSuccess: 'Flow updated'
+        },
+        onAfterDelete: (id) => {
+            if (selectedFlowId === id) {
+                resetVersions();
+            }
+        }
+        // No explicit create here as new flow usually means navigation to new editor
+    });
 
     useEffect(() => {
         loadFlows();
-    }, []);
+    }, [loadFlows]);
 
-    const loadFlows = async () => {
-        try {
-            setLoading(true);
-            const data = await flowApi.getAll();
-            setFlows(data);
-        } catch (error) {
-            console.error("Failed to load flows", error);
-            toast.error("Failed to load flows");
-        } finally {
-            setLoading(false);
+    // Custom Hooks - Version History
+    const {
+        selectedId: selectedFlowId,
+        versions,
+        loading: loadingVersions,
+        handleViewVersions,
+        handleRestoreVersion,
+        handleDeleteVersion: onDeleteVersion,
+        reset: resetVersions
+    } = useVersionHistory<FlowVersion, Flow>({
+        fetchVersions: flowApi.getVersions,
+        restoreVersion: flowApi.restoreVersion,
+        deleteVersion: flowApi.deleteVersion,
+        onRestoreSuccess: (restored) => {
+            setFlows(prev => prev.map(f => f.id === restored.id ? restored : f));
+            navigate(`/editor/${restored.id}`);
         }
-    };
+    });
+
+    // Custom Hooks - Sort and Filter
+    const {
+        filterStatus,
+        setFilterStatus,
+        sortBy,
+        setSortBy,
+        filteredAndSortedItems: filteredFlows
+    } = useSortAndFilter<Flow>({
+        items: flows,
+        filterPredicate: (item, status) => {
+            if (status === 'all') return true;
+            if (status === 'active') return !item.is_archived;
+            if (status === 'archived') return !!item.is_archived;
+            return true;
+        },
+        sortComparator: (a, b, sortOption) => {
+            if (sortOption === 'name_asc') return a.name.localeCompare(b.name);
+            const dateA = new Date(a.updated_at || 0).getTime();
+            const dateB = new Date(b.updated_at || 0).getTime();
+            return sortOption === 'updated_desc' ? dateB - dateA : dateA - dateB;
+        }
+    });
+
+    // Wrapped handlers
+    const handleViewVersionsClick = (id: number) => handleViewVersions(id);
+    const handleDeleteVersionClick = (flowId: number, versionId: number) => onDeleteVersion(flowId, versionId);
 
     const handleDeleteFlow = async (id: number) => {
         if (!confirm("Are you sure you want to delete this flow? This action cannot be undone.")) return;
-        try {
-            await flowApi.delete(id);
-            setFlows(flows.filter(f => f.id !== id));
-            toast.success("Flow deleted");
-            if (selectedFlowId === id) {
-                setSelectedFlowId(null);
-                setVersions([]);
-            }
-        } catch (error) {
-            console.error("Failed to delete flow", error);
-            toast.error("Failed to delete flow");
-        }
+        await removeFlow(id);
     };
 
     const handleToggleArchive = async (flow: Flow) => {
-        try {
-            const updatedFlow = { ...flow, is_archived: !flow.is_archived }; // Optimistic update type assumption
-            // We need to fetch the full object or just assume update works. 
-            // Since flowApi.update takes a partial or full flow, let's just send the change.
-            // Note: flowApi.update expects Flow object. 
-            await flowApi.update(flow.id!, { ...flow, is_archived: !flow.is_archived } as any);
-
-            setFlows(flows.map(f => f.id === flow.id ? { ...f, is_archived: !f.is_archived } : f));
-            toast.success(flow.is_archived ? "Flow unarchived" : "Flow archived");
-        } catch (error) {
-            console.error("Failed to toggle archive status", error);
-            toast.error("Failed to update status");
-        }
+        await updateFlow(flow.id!, { ...flow, is_archived: !flow.is_archived });
     };
 
-    const handleViewVersions = async (flowId: number) => {
-        if (selectedFlowId === flowId) {
-            setSelectedFlowId(null);
-            setVersions([]);
-            return;
-        }
-
-        try {
-            setSelectedFlowId(flowId);
-            setLoadingVersions(true);
-            const data = await flowApi.getVersions(flowId);
-            setVersions(data);
-        } catch (error) {
-            console.error("Failed to load versions", error);
-            toast.error("Failed to load versions");
-        } finally {
-            setLoadingVersions(false);
-        }
-    };
-
-    const handleRestoreVersion = async (flowId: number, versionId: number) => {
-        if (!confirm("Are you sure you want to restore this version? Current unsaved changes might be lost.")) return;
-        try {
-            const restoredFlow = await flowApi.restoreVersion(flowId, versionId);
-            toast.success("Version restored successfully");
-            // Update the flow in the list to reflect new update time
-            setFlows(flows.map(f => f.id === flowId ? restoredFlow : f));
-            // Navigate to editor
-            navigate(`/editor/${flowId}`);
-        } catch (error) {
-            console.error("Failed to restore version", error);
-            toast.error("Failed to restore version");
-        }
-    };
-
-    const handleDeleteVersion = async (flowId: number, versionId: number) => {
-        if (!confirm("Are you sure you want to delete this version?")) return;
-        try {
-            await flowApi.deleteVersion(flowId, versionId);
-            setVersions(versions.filter(v => v.id !== versionId));
-            toast.success("Version deleted");
-        } catch (error) {
-            console.error("Failed to delete version", error);
-            toast.error("Failed to delete version");
-        }
-    };
-
-    // Filter and Sort Logic
-    const filteredFlows = flows
-        .filter(flow => {
-            if (filterStatus === 'all') return true;
-            if (filterStatus === 'active') return !flow.is_archived;
-            if (filterStatus === 'archived') return flow.is_archived;
-            return true;
-        })
-        .sort((a, b) => {
-            if (sortBy === 'name_asc') return a.name.localeCompare(b.name);
-            const dateA = new Date(a.updated_at || 0).getTime();
-            const dateB = new Date(b.updated_at || 0).getTime();
-            return sortBy === 'updated_desc' ? dateB - dateA : dateA - dateB;
-        });
+    // Filter and Sort Logic - Now handled by useSortAndFilter hook
+    // const filteredFlows = flows
+    //     .filter(flow => {
+    //         if (filterStatus === 'all') return true;
+    //         if (filterStatus === 'active') return !flow.is_archived;
+    //         if (filterStatus === 'archived') return flow.is_archived;
+    //         return true;
+    //     })
+    //     .sort((a, b) => {
+    //         if (sortBy === 'name_asc') return a.name.localeCompare(b.name);
+    //         const dateA = new Date(a.updated_at || 0).getTime();
+    //         const dateB = new Date(b.updated_at || 0).getTime();
+    //         return sortBy === 'updated_desc' ? dateB - dateA : dateA - dateB;
+    //     });
 
     return (
         <div className="min-h-screen bg-slate-50 p-8">
@@ -248,7 +225,7 @@ export default function FlowsPage() {
                                             {flow.is_archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
                                         </button>
                                         <button
-                                            onClick={() => handleViewVersions(flow.id!)}
+                                            onClick={() => handleViewVersionsClick(flow.id!)}
                                             className={`p-2 rounded-lg transition-colors flex items-center gap-1.5 text-sm font-medium ${selectedFlowId === flow.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}
                                         >
                                             <History size={16} />
@@ -314,7 +291,7 @@ export default function FlowsPage() {
                                                                 )}
 
                                                                 <button
-                                                                    onClick={() => handleDeleteVersion(flow.id!, version.id)}
+                                                                    onClick={() => handleDeleteVersionClick(flow.id!, version.id)}
                                                                     className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
                                                                     title="Delete Version"
                                                                 >

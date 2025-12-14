@@ -13,4 +13,7 @@ export interface AgentNodeData extends NodeData {
     profile_id?: number;
     provider?: string;
     model_id?: string;
+    // Template Versioning
+    _templateId?: number;
+    _templateVersion?: number;
 }
