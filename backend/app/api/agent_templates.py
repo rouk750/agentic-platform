@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlmodel import Session, select
 from datetime import datetime
 
@@ -139,6 +139,61 @@ def delete_agent_template_version(template_id: int, version_id: int, session: Se
     if version.template_id != template_id:
         raise HTTPException(status_code=400, detail="Version does not belong to this template")
         
+    # Check if version is locked
+    if version.is_locked:
+        raise HTTPException(status_code=400, detail="Cannot delete a locked version")
+        
+    # Check if version is current (config matches)
+    if template.config == version.config:
+        raise HTTPException(status_code=400, detail="Cannot delete the current active version")
+        
     session.delete(version)
     session.commit()
     return {"ok": True}
+
+@router.delete("/agent-templates/{template_id}/versions")
+def delete_agent_template_versions(template_id: int, version_ids: List[int] = Body(...), session: Session = Depends(get_session)):
+    template = session.get(AgentTemplate, template_id)
+    if not template:
+        raise HTTPException(status_code=404, detail="Agent Template not found")
+        
+    statement = select(AgentTemplateVersion).where(AgentTemplateVersion.id.in_(version_ids))
+    versions = session.exec(statement).all()
+
+    if len(versions) != len(version_ids):
+        raise HTTPException(status_code=404, detail="One or more versions not found")
+        
+    for version in versions:
+        if version.template_id != template_id:
+            raise HTTPException(status_code=400, detail=f"Version {version.id} does not belong to this template")
+            
+        if version.is_locked:
+             raise HTTPException(status_code=400, detail=f"Version {version.id} is locked")
+             
+        if template.config == version.config:
+             raise HTTPException(status_code=400, detail=f"Version {version.id} is the current active version")
+             
+        session.delete(version)
+        
+    session.commit()
+    return {"ok": True}
+
+@router.put("/agent-templates/{template_id}/versions/{version_id}/lock", response_model=AgentTemplateVersionRead)
+def toggle_agent_template_version_lock(
+    template_id: int, 
+    version_id: int, 
+    is_locked: bool,
+    session: Session = Depends(get_session)
+):
+    version = session.get(AgentTemplateVersion, version_id)
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+        
+    if version.template_id != template_id:
+        raise HTTPException(status_code=400, detail="Version does not belong to this template")
+        
+    version.is_locked = is_locked
+    session.add(version)
+    session.commit()
+    session.refresh(version)
+    return version

@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from sqlmodel import Session, select
 from datetime import datetime
 
@@ -104,9 +104,63 @@ def delete_flow_version(flow_id: int, version_id: int, session: Session = Depend
     if version.flow_id != flow_id:
         raise HTTPException(status_code=400, detail="Version does not belong to this flow")
         
+    # Check if version is locked
+    if version.is_locked:
+        raise HTTPException(status_code=400, detail="Cannot delete a locked version")
+        
+    # Check if version is current (data matches)
+    if flow.data == version.data:
+        raise HTTPException(status_code=400, detail="Cannot delete the current active version")
+        
     session.delete(version)
     session.commit()
     return {"ok": True}
+
+@router.delete("/flows/{flow_id}/versions")
+def delete_flow_versions(flow_id: int, version_ids: List[int] = Body(...), session: Session = Depends(get_session)):
+    flow = session.get(Flow, flow_id)
+    if not flow:
+        raise HTTPException(status_code=404, detail="Flow not found")
+    
+    # Verify all versions belong to the flow and exist
+    statement = select(FlowVersion).where(FlowVersion.id.in_(version_ids))
+    versions = session.exec(statement).all()
+    
+    if len(versions) != len(version_ids):
+         raise HTTPException(status_code=404, detail="One or more versions not found")
+
+    for version in versions:
+        if version.flow_id != flow_id:
+             raise HTTPException(status_code=400, detail=f"Version {version.id} does not belong to this flow")
+        if version.is_locked:
+             raise HTTPException(status_code=400, detail=f"Version {version.id} is locked")
+        if flow.data == version.data:
+             raise HTTPException(status_code=400, detail=f"Version {version.id} is the current active version")
+             
+        session.delete(version)
+        
+    session.commit()
+    return {"ok": True}
+
+@router.put("/flows/{flow_id}/versions/{version_id}/lock", response_model=FlowVersionRead)
+def toggle_flow_version_lock(
+    flow_id: int, 
+    version_id: int, 
+    is_locked: bool, 
+    session: Session = Depends(get_session)
+):
+    version = session.get(FlowVersion, version_id)
+    if not version:
+        raise HTTPException(status_code=404, detail="Version not found")
+        
+    if version.flow_id != flow_id:
+        raise HTTPException(status_code=400, detail="Version does not belong to this flow")
+        
+    version.is_locked = is_locked
+    session.add(version)
+    session.commit()
+    session.refresh(version)
+    return version
 
 @router.post("/flows/{flow_id}/versions/{version_id}/restore", response_model=FlowRead)
 def restore_flow_version(flow_id: int, version_id: int, session: Session = Depends(get_session)):

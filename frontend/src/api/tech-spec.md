@@ -14,7 +14,9 @@ Manages `Flow` entities (the graphs).
 | `create` | `(flow: Flow) => Promise<Flow>` | Creates new flow. |
 | `update` | `(id: number, flow: Partial<Flow>) => Promise<Flow>` | Updates flow (and triggers versioning if data changed). |
 | `getVersions` | `(id: number) => Promise<any[]>` | Fetches history. |
+| `deleteVersions` | `(fid: number, vids: number[]) => Promise<void>` | Bulk deletes versions. |
 | `restoreVersion` | `(fid: number, vid: number) => Promise<Flow>` | Reverts flow to version. |
+| `toggleLock` | `(fid: number, vid: number, isLocked: boolean) => Promise<void>` | Locks/unlocks version. |
 
 ### Adherences & Usage
 *   **Dependencies**: `axios`, `window.electronAPI` (for port discovery).
@@ -60,7 +62,7 @@ Manages `AgentTemplate` (presets).
 
 ### Function Reference
 *   `getAll`, `getOne`, `create`, `update`, `delete`.
-*   `getVersions`, `restoreVersion`, `deleteVersion`.
+*   `getVersions`, `restoreVersion`, `deleteVersion`, `deleteVersions`, `toggleLock`.
 
 ### Adherences & Usage
 *   **Consumed By**:

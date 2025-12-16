@@ -11,7 +11,9 @@ This directory (`frontend/src/pages`) contains top-level route components manage
 A dashboard to list, sort, filter, and manage Flows.
 *   **Adherences**:
     *   **Hooks**: `useApiResource` (CRUD), `useSortAndFilter`, `useVersionHistory`.
+    *   **Hooks**: `useApiResource` (CRUD), `useSortAndFilter`, `useVersionHistory`.
     *   **API**: `flowApi`.
+    *   **Features**: Version Locking, Bulk Version Delete, Restore-in-place.
     *   **Route**: `/flows`.
 
 ### `AgentsPage` (`AgentsPage.tsx`)
@@ -20,6 +22,7 @@ A library view for Agent Templates ("Blueprints").
     *   **Hooks**: `useApiResource`, `useVersionHistory`.
     *   **API**: `templateApi`.
     *   **Dialog**: `AgentTemplateDialog` for creating/editing.
+    *   **Features**: Version Locking, Bulk Version Delete, Restore-in-place.
     *   **Route**: `/agents`.
 
 ### `SettingsPage` (`SettingsPage.tsx`)

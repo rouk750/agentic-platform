@@ -19,6 +19,7 @@ export interface AgentTemplateVersion {
     config: string;
     created_at: string;
     version_number: number;
+    is_locked?: boolean;
 }
 
 export const templateApi = {
@@ -58,5 +59,15 @@ export const templateApi = {
 
     deleteVersion: async (templateId: number, versionId: number): Promise<void> => {
         await axios.delete(`${API_URL}/agent-templates/${templateId}/versions/${versionId}`);
+    },
+
+    deleteVersions: async (templateId: number, versionIds: number[]): Promise<void> => {
+        await axios.delete(`${API_URL}/agent-templates/${templateId}/versions`, { data: versionIds });
+    },
+
+    toggleLock: async (templateId: number, versionId: number, isLocked: boolean): Promise<void> => {
+        await axios.put(`${API_URL}/agent-templates/${templateId}/versions/${versionId}/lock`, null, {
+            params: { is_locked: isLocked }
+        });
     }
 };

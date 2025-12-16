@@ -51,25 +51,32 @@ export const flowApi = {
 
     getVersions: async (flowId: number): Promise<any[]> => {
         const baseUrl = await getBaseUrl();
-        const response = await fetch(`${baseUrl}/flows/${flowId}/versions`);
-        if (!response.ok) throw new Error('Failed to fetch versions');
-        return response.json();
+        const res = await axios.get(`${baseUrl}/flows/${flowId}/versions`);
+        return res.data;
     },
 
     restoreVersion: async (flowId: number, versionId: number): Promise<Flow> => {
         const baseUrl = await getBaseUrl();
-        const response = await fetch(`${baseUrl}/flows/${flowId}/versions/${versionId}/restore`, {
-            method: 'POST'
-        });
-        if (!response.ok) throw new Error('Failed to restore version');
-        return response.json();
+        const res = await axios.post(`${baseUrl}/flows/${flowId}/versions/${versionId}/restore`);
+        return res.data;
     },
 
     deleteVersion: async (flowId: number, versionId: number): Promise<void> => {
         const baseUrl = await getBaseUrl();
-        const response = await fetch(`${baseUrl}/flows/${flowId}/versions/${versionId}`, {
-            method: 'DELETE'
+        await axios.delete(`${baseUrl}/flows/${flowId}/versions/${versionId}`);
+    },
+
+    deleteVersions: async (flowId: number, versionIds: number[]): Promise<void> => {
+        const baseUrl = await getBaseUrl();
+        await axios.delete(`${baseUrl}/flows/${flowId}/versions`, {
+            data: versionIds
         });
-        if (!response.ok) throw new Error('Failed to delete version');
+    },
+
+    toggleLock: async (flowId: number, versionId: number, isLocked: boolean): Promise<void> => {
+        const baseUrl = await getBaseUrl();
+        await axios.put(`${baseUrl}/flows/${flowId}/versions/${versionId}/lock`, null, {
+            params: { is_locked: isLocked }
+        });
     }
 };

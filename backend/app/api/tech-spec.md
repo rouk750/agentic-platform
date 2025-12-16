@@ -54,6 +54,26 @@ def update_flow(flow_id: int, flow_update: FlowUpdate, session: Session) -> Flow
 Updates flow data.
 - **Logic**: If `data` (graph structure) changes, automatically creates a `FlowVersion`.
 
+### `DELETE /flows/{flow_id}/versions`
+```python
+def delete_flow_versions(flow_id: int, version_ids: List[int] = Body(...), session: Session) -> dict
+```
+Bulk deletes specific versions of a flow.
+- **Payload**: JSON list of version IDs `[1, 2, 3]`.
+- **Validation**: Cannot delete locked versions or the current active version.
+
+### `PUT /flows/{flow_id}/versions/{version_id}/lock`
+```python
+def toggle_flow_version_lock(flow_id: int, version_id: int, is_locked: bool, session: Session) -> FlowVersionRead
+```
+Toggles the lock status of a version.
+
+### `POST /flows/{flow_id}/versions/{version_id}/restore`
+```python
+def restore_flow_version(flow_id: int, version_id: int, session: Session) -> FlowRead
+```
+Reverts current data to a previous version.
+
 ### `GET /flows/{flow_id}/versions`
 ```python
 def read_flow_versions(flow_id: int, session: Session) -> List[FlowVersionRead]
@@ -91,3 +111,16 @@ Updates template config.
 def restore_agent_template_version(...) -> AgentTemplateRead
 ```
 Reverts current config to a previous version.
+
+### `DELETE /agent-templates/{template_id}/versions`
+```python
+def delete_agent_template_versions(template_id: int, version_ids: List[int] = Body(...), session: Session) -> dict
+```
+Bulk deletes specific versions.
+- **Validation**: Cannot delete locked versions or the current active version.
+
+### `PUT /agent-templates/{template_id}/versions/{version_id}/lock`
+```python
+def toggle_agent_template_version_lock(template_id: int, version_id: int, is_locked: bool, session: Session) -> AgentTemplateVersionRead
+```
+Toggles the lock status of a version.

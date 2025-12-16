@@ -7,3 +7,4 @@ class FlowVersion(SQLModel, table=True):
     flow_id: int = Field(foreign_key="flow.id")
     data: str  # JSON content of the flow version
     created_at: datetime = Field(default_factory=datetime.utcnow)
+    is_locked: bool = Field(default=False)

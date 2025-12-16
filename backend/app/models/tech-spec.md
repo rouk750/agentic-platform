@@ -25,6 +25,7 @@ Snapshot of a flow's data state.
 | `flow_id` | `int` | FK | References `flow.id`. |
 | `data` | `str` (JSON) | - | Snapshot of `Flow.data`. |
 | `created_at` | `datetime` | `utcnow` | Timestamp of version creation. |
+| `is_locked` | `bool` | `False` | Prevents deletion if true. |
 
 ## 2. Agent Templates
 
@@ -46,6 +47,7 @@ Versioning info for templates.
 | `template_id` | `int` | FK | References `agenttemplate.id`. |
 | `config` | `str` (JSON) | - | Snapshot of config. |
 | `version_number` | `int` | `None` | Sequential version counter. |
+| `is_locked` | `bool` | `False` | Prevents deletion if true. |
 
 ## 3. Settings
 

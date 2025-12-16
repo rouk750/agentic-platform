@@ -51,4 +51,8 @@ function useApiResource<T, TCreate, TUpdate>(
 
 ### `useVersionHistory` (`useVersionHistory.ts`)
 *   **Description**: Manages state for "Time Travel" features (Flows/Templates).
-*   **Adherences**: Assumes API endpoints for `getVersions` and `restoreVersion`.
+*   **Capabilities**:
+    *   Fetching/Restoring/Deleting single versions.
+    *   **Bulk Actions**: `selectedVersionIds`, `toggle`, `selectAll` (with filter support), `handleBulkDelete`.
+    *   **Locking**: `toggleLock` functionality.
+*   **Adherences**: Assumes API endpoints for `getVersions`, `restoreVersion`, and optional `deleteVersions`.
