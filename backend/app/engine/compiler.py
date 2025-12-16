@@ -136,8 +136,9 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
         # --- 1. Implicit Tool Routing (Agent -> Tool via 'tool-call') ---
         # (Only applies if source is NOT explicitly a router node, though agents act as routers here)
         
+
         tool_call_target = None
-        default_target_for_tool = None
+        default_targets_for_tool = []
         
         has_tool_handle = False
         for t in targets:
@@ -145,18 +146,21 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
                 has_tool_handle = True
                 tool_call_target = t['target']
             elif not t['handle'] or t['handle'] == 'default' or t['handle'] == 'output':
-                default_target_for_tool = t['target']
+                # [FIX] Support fan-out: Collect ALL default targets
+                default_targets_for_tool.append(t['target'])
         
         if has_tool_handle:
-            def route_tool(state, config=None, t_target=tool_call_target, d_target=default_target_for_tool):
+            def route_tool(state, config=None, t_target=tool_call_target, d_targets=default_targets_for_tool):
                 messages = state.get('messages', [])
                 if messages and hasattr(messages[-1], 'tool_calls') and messages[-1].tool_calls:
                     return t_target
-                return d_target if d_target else END
+                # [FIX] Return LIST of targets for parallel execution
+                return d_targets if d_targets else END
 
             path_map = {tool_call_target: tool_call_target}
-            if default_target_for_tool:
-                path_map[default_target_for_tool] = default_target_for_tool
+            if default_targets_for_tool:
+                for dt in default_targets_for_tool:
+                    path_map[dt] = dt
             else:
                 path_map[END] = END
             
