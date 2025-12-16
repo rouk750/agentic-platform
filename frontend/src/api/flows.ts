@@ -51,7 +51,13 @@ export const flowApi = {
 
     getVersions: async (flowId: number): Promise<any[]> => {
         const baseUrl = await getBaseUrl();
-        const res = await axios.get(`${baseUrl}/flows/${flowId}/versions`);
+        const res = await axios.get(`${baseUrl}/flows/${flowId}/versions`, {
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+            }
+        });
         return res.data;
     },
 

@@ -48,7 +48,13 @@ export const templateApi = {
     },
 
     getVersions: async (id: number): Promise<AgentTemplateVersion[]> => {
-        const response = await axios.get(`${API_URL}/agent-templates/${id}/versions`);
+        const response = await axios.get(`${API_URL}/agent-templates/${id}/versions`, {
+            headers: {
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache',
+                'Expires': '0',
+            }
+        });
         return response.data;
     },
 
