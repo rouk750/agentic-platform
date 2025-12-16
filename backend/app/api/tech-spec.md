@@ -1,0 +1,93 @@
+# Backend API Technical Specification
+
+## Overview
+This directory (`backend/app/api`) contains the **FastAPI** routers.
+
+## 1. Settings Router (`settings.py`)
+`Prefix: /api/settings`
+
+### `POST /models`
+```python
+def create_model_profile(profile: LLMProfileCreate, session: Session) -> LLMProfile
+```
+ Creates a new LLM configuration.
+- **Side Effects**: Saves API key securely to system keyring using `save_api_key`.
+
+### `GET /models`
+```python
+def list_model_profiles(session: Session) -> List[LLMProfile]
+```
+Lists all saved profiles.
+- **Note**: Does not return sensitive API keys manifest, only `api_key_ref`.
+
+### `POST /models/{model_id}/test`
+```python
+async def test_saved_model_connection(model_id: int, session: Session) -> dict
+```
+Verifies an *existing* DB profile works.
+- **Logic**: Decrypts key using `get_api_key` and calls provider's `test_connection`.
+
+### `POST /test-connection`
+```python
+async def test_connection(request: TestConnectionRequest) -> dict
+```
+Verifies transient connection parameters (before saving).
+
+## 2. Flows Router (`flows.py`)
+`Prefix: /api/flows`
+
+### `GET /flows`
+```python
+def read_flows(session: Session) -> List[FlowRead]
+```
+
+### `POST /flows`
+```python
+def create_flow(flow_in: FlowCreate, session: Session) -> FlowRead
+```
+Saves a new workflow.
+
+### `PUT /flows/{flow_id}`
+```python
+def update_flow(flow_id: int, flow_update: FlowUpdate, session: Session) -> FlowRead
+```
+Updates flow data.
+- **Logic**: If `data` (graph structure) changes, automatically creates a `FlowVersion`.
+
+### `GET /flows/{flow_id}/versions`
+```python
+def read_flow_versions(flow_id: int, session: Session) -> List[FlowVersionRead]
+```
+
+## 3. Run Router (`run.py`)
+`Prefix: /api/run`
+
+### `WS /ws/run/{graph_id}`
+```python
+async def websocket_endpoint(websocket: WebSocket, graph_id: str)
+```
+Handles streaming execution of agents.
+**Protocol**:
+1.  **Init**: Recv JSON `{"graph": {...}, "input": "..."}`.
+2.  **Compile**: Calls `app.engine.compiler.compile_graph`.
+3.  **Stream**: Loops `app.astream_events`.
+    *   `token`: LLM partial output.
+    *   `node_active`: Logic node start.
+    *   `node_finished`: Node output.
+    *   `tool_start/end`: Tool execution details.
+
+## 4. Agent Templates (`agent_templates.py`)
+`Prefix: /api/agent-templates`
+
+### `PUT /agent-templates/{id}`
+```python
+def update_agent_template(template_id: int, template_update: AgentTemplateUpdate, session: Session) -> AgentTemplateRead
+```
+Updates template config.
+- **Logic**: Increments version number on config change.
+
+### `POST /{id}/versions/{vid}/restore`
+```python
+def restore_agent_template_version(...) -> AgentTemplateRead
+```
+Reverts current config to a previous version.
