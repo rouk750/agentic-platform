@@ -18,3 +18,4 @@ class AgentTemplateVersion(SQLModel, table=True):
     config: str # JSON content of the configuration version
     created_at: datetime = Field(default_factory=datetime.utcnow)
     version_number: Optional[int] = None # Optional for now, can be auto-incremented or just use ID/created_at
+    is_locked: bool = Field(default=False)

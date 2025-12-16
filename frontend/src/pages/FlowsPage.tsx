@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { flowApi, Flow } from '../api/flows';
-import { Trash2, History, RotateCcw, ArrowRight, Loader2, Plus, Archive, ArchiveRestore, Filter } from 'lucide-react';
+import { Trash2, History, RotateCcw, ArrowRight, Loader2, Plus, Archive, ArchiveRestore, Filter, Lock, Unlock } from 'lucide-react';
 // import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { useApiResource } from '../hooks/useApiResource';
@@ -13,6 +13,7 @@ interface FlowVersion {
     flow_id: number;
     created_at: string;
     data: string;
+    is_locked?: boolean;
 }
 
 // type FilterStatus = 'active' | 'archived' | 'all';
@@ -53,14 +54,22 @@ export default function FlowsPage() {
         handleViewVersions,
         handleRestoreVersion,
         handleDeleteVersion: onDeleteVersion,
-        reset: resetVersions
+        reset: resetVersions,
+        selectedVersionIds,
+        toggleVersionSelection,
+        handleBulkDelete,
+        handleToggleLock,
+        selectAllVersions,
+        clearSelection
     } = useVersionHistory<FlowVersion, Flow>({
         fetchVersions: flowApi.getVersions,
         restoreVersion: flowApi.restoreVersion,
         deleteVersion: flowApi.deleteVersion,
+        deleteVersions: flowApi.deleteVersions,
+        toggleLock: flowApi.toggleLock,
         onRestoreSuccess: (restored) => {
             setFlows(prev => prev.map(f => f.id === restored.id ? restored : f));
-            navigate(`/editor/${restored.id}`);
+            // navigate(`/editor/${restored.id}`); // Stay on current page
         }
     });
 
@@ -92,7 +101,8 @@ export default function FlowsPage() {
     const handleDeleteVersionClick = (flowId: number, versionId: number) => onDeleteVersion(flowId, versionId);
 
     const handleDeleteFlow = async (id: number) => {
-        if (!confirm("Are you sure you want to delete this flow? This action cannot be undone.")) return;
+        const flow = flows.find(f => f.id === id);
+        if (!confirm(`Are you sure you want to delete the flow "${flow?.name || 'Unknown'}"?\n\nThis action cannot be undone and will delete all associated versions.`)) return;
         await removeFlow(id);
     };
 
@@ -251,7 +261,42 @@ export default function FlowsPage() {
                                 {/* Versions List - Expandable */}
                                 {selectedFlowId === flow.id && (
                                     <div className="bg-slate-50 border-t border-slate-200 p-4 animate-in slide-in-from-top-2 duration-200">
-                                        <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 pl-1">Version History</h4>
+                                        <div className="flex items-center justify-between mb-3 pl-1">
+                                            <div className="flex items-center gap-3">
+                                                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Version History</h4>
+                                                {versions.length > 0 && (
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={selectedVersionIds.size > 0 && versions.filter(v => !v.is_locked && v.data !== flow.data).every(v => selectedVersionIds.has(v.id))}
+                                                                onChange={(e) => {
+                                                                    if (e.target.checked) {
+                                                                        selectAllVersions(v => !v.is_locked && v.data !== flow.data);
+                                                                    } else {
+                                                                        clearSelection();
+                                                                    }
+                                                                }}
+                                                                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-3.5 h-3.5"
+                                                            />
+                                                            <span className="text-xs text-slate-400">Select All</span>
+                                                        </div>
+
+                                                        {selectedVersionIds.size > 0 && (
+                                                            <div className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-200 ml-2">
+                                                                <span className="text-xs font-medium text-slate-600">({selectedVersionIds.size})</span>
+                                                                <button
+                                                                    onClick={() => handleBulkDelete(flow.id!)}
+                                                                    className="flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded-md text-xs font-medium transition-colors"
+                                                                >
+                                                                    <Trash2 size={12} /> Delete
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
 
                                         {loadingVersions ? (
                                             <div className="flex items-center gap-2 text-slate-500 text-sm pl-1">
@@ -263,15 +308,31 @@ export default function FlowsPage() {
                                             <div className="space-y-2">
                                                 {versions.map((version) => {
                                                     const isActive = flow.data === version.data;
+                                                    const isSelected = selectedVersionIds.has(version.id);
                                                     return (
-                                                        <div key={version.id} className={`flex items-center justify-between bg-white p-3 rounded-lg border text-sm ${isActive ? 'border-green-200 bg-green-50/30' : 'border-slate-200'}`}>
+                                                        <div key={version.id} className={`flex items-center justify-between bg-white p-3 rounded-lg border text-sm transition-colors ${isSelected ? 'border-blue-300 bg-blue-50/20' : isActive ? 'border-green-200 bg-green-50/30' : 'border-slate-200 hover:border-slate-300'}`}>
                                                             <div className="flex items-center gap-3">
+                                                                <div className="flex items-center justify-center w-6 h-6">
+                                                                    {!version.is_locked && !isActive && (
+                                                                        <input
+                                                                            type="checkbox"
+                                                                            checked={isSelected}
+                                                                            onChange={() => toggleVersionSelection(version.id)}
+                                                                            className="rounded border-slate-300 text-blue-600 focus:ring-blue-500 w-4 h-4 cursor-pointer"
+                                                                        />
+                                                                    )}
+                                                                </div>
                                                                 <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${isActive ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}`}>v{version.id}</span>
                                                                 <div className="flex flex-col">
                                                                     <div className="flex items-center gap-2">
                                                                         <span className="font-medium text-slate-700">Saved Version</span>
                                                                         {isActive && (
                                                                             <span className="text-[10px] font-bold text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full uppercase tracking-wider">Active</span>
+                                                                        )}
+                                                                        {version.is_locked && (
+                                                                            <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-1.5 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                                                                                <Lock size={8} /> Locked
+                                                                            </span>
                                                                         )}
                                                                     </div>
                                                                     <span className="text-xs text-slate-500">{new Date(version.created_at).toLocaleString()} ({formatDistanceToNow(new Date(version.created_at))} ago)</span>
@@ -291,9 +352,18 @@ export default function FlowsPage() {
                                                                 )}
 
                                                                 <button
+                                                                    onClick={() => handleToggleLock(flow.id!, version)}
+                                                                    className={`p-1.5 rounded-md transition-colors ${version.is_locked ? 'text-amber-600 hover:bg-amber-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                                                                    title={version.is_locked ? "Unlock Version" : "Lock Version"}
+                                                                >
+                                                                    {version.is_locked ? <Lock size={14} /> : <Unlock size={14} />}
+                                                                </button>
+
+                                                                <button
                                                                     onClick={() => handleDeleteVersionClick(flow.id!, version.id)}
-                                                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-md transition-colors"
-                                                                    title="Delete Version"
+                                                                    disabled={version.is_locked || isActive}
+                                                                    className={`p-1.5 rounded-md transition-colors ${version.is_locked || isActive ? 'text-slate-300 cursor-not-allowed' : 'text-slate-400 hover:text-red-500 hover:bg-red-50'}`}
+                                                                    title={version.is_locked ? "Cannot delete locked version" : isActive ? "Cannot delete active version" : "Delete Version"}
                                                                 >
                                                                     <Trash2 size={14} />
                                                                 </button>
