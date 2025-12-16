@@ -24,6 +24,7 @@ type FormData = {
     max_iterations: number;
     output_schema: SchemaField[];
     flexible_mode: boolean;
+    isStart: boolean;
 };
 
 export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentConfigDialogProps) {
@@ -33,7 +34,8 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
             system_prompt: data.system_prompt || "",
             max_iterations: data.max_iterations || 0,
             output_schema: data.output_schema || [],
-            flexible_mode: data.flexible_mode || false
+            flexible_mode: data.flexible_mode || false,
+            isStart: data.isStart || false
         }
     });
 
@@ -59,6 +61,7 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
             setValue('max_iterations', data.max_iterations || 0);
             setValue('output_schema', data.output_schema || []);
             setValue('flexible_mode', data.flexible_mode || false);
+            setValue('isStart', data.isStart || false);
             setSelectedTools(data.tools || []);
         }
     }, [open, data, setValue]);
@@ -71,7 +74,8 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
             max_iterations: Number(formData.max_iterations),
             tools: selectedTools,
             output_schema: formData.output_schema as SchemaField[],
-            flexible_mode: formData.flexible_mode
+            flexible_mode: formData.flexible_mode,
+            isStart: formData.isStart
         };
 
         if (selectedModel) {
@@ -106,6 +110,27 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
                     </div>
 
                     <form onSubmit={handleSubmit((data) => onSubmit(data, true))} className="flex flex-col gap-6 overflow-y-auto pr-2">
+
+                        {/* Entry Point Toggle */}
+                        <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg flex items-center justify-between">
+                            <div>
+                                <label htmlFor="isStart" className="text-sm font-semibold text-slate-800 flex items-center gap-2 cursor-pointer">
+                                    Set as Entry Point
+                                </label>
+                                <p className="text-xs text-slate-500 mt-0.5">
+                                    Forces this agent to be the first step in the workflow.
+                                </p>
+                            </div>
+                            <div className="flex items-center">
+                                <input
+                                    type="checkbox"
+                                    id="isStart"
+                                    {...register('isStart')}
+                                    className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                />
+                            </div>
+                        </div>
+
                         {/* Model Selection */}
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-slate-700">Model</label>

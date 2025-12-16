@@ -9,6 +9,7 @@ export interface AgentNodeData extends NodeData {
     tools?: string[];
     output_schema?: SchemaField[];
     flexible_mode?: boolean;
+    isStart?: boolean;
     // Backend specific fields often synced or used for mapping
     profile_id?: number;
     provider?: string;

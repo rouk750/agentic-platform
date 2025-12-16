@@ -103,10 +103,15 @@ export function AgentNode({ id, data, selected }: NodeProps<AgentNodeType>) {
                 {/* Header */}
                 <div className="flex items-center gap-3 p-3 border-b border-slate-100 bg-gradient-to-b from-white to-slate-50/50 rounded-t-xl">
                     <div className={twMerge(
-                        "p-2 rounded-lg transition-colors",
+                        "p-2 rounded-lg transition-colors flex items-center justify-center relative",
                         isActive ? "bg-green-100 text-green-600" : "bg-blue-100 text-blue-600"
                     )}>
                         <Bot size={18} />
+                        {data.isStart && (
+                            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white shadow-sm flex items-center justify-center" title="Entry Point">
+                                <div className="w-1 h-1 bg-white rounded-full"></div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex-1 min-w-0">

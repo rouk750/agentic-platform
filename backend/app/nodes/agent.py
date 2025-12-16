@@ -64,8 +64,32 @@ class GenericAgentNode:
             schema_instruction += "}\nDo not include markdown formatting like ```json. Just raw JSON."
             effective_system_prompt += schema_instruction
 
+        # [FEATURE] Prompt Templating (Smart Input Injection)
+        # Allow the system prompt to access state variables using {{ variable_name }} syntax.
+        # This mirrors the "Smart Node" capability to pull inputs from the state.
         if effective_system_prompt:
-             invocation_messages = [SystemMessage(content=effective_system_prompt)] + messages
+            import re
+            
+            # Find all {{ var_name }} patterns
+            pattern = r"\{\{\s*(\w+)\s*\}\}"
+            
+            def replace_match(match):
+                var_name = match.group(1)
+                # Look in state first (Priority 1)
+                if var_name in state:
+                    return str(state[var_name])
+                # Look in context dict (Priority 2 - often used in LangGraph)
+                if "context" in state and isinstance(state["context"], dict) and var_name in state["context"]:
+                    return str(state["context"][var_name])
+                
+                # Warning if not found, or keep original text?
+                # Keeping original text is safer for debugging but might confuse LLM.
+                # Let's replace with a placeholder indicating "MISSING" to help user debug
+                return f"<{var_name} NOT FOUND>"
+
+            effective_system_prompt = re.sub(pattern, replace_match, effective_system_prompt)
+            
+            invocation_messages = [SystemMessage(content=effective_system_prompt)] + messages
 
         from app.engine.debug import print_debug
         

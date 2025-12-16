@@ -66,31 +66,50 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
 
     # Find the start node (Entry point)
     # Strategy:
+    # 0. Look for explicit "isStart" flag in node data (User configured)
     # 1. Look for explicit START edge (from a node named 'start_node' or 'START' not in registry)
     # 2. Look for orphans (nodes with no incoming edges from VALID other nodes)
     
     start_edge_found = False
     
-    # Calculate incoming edges only from valid nodes to identify orphans correctly
-    valid_incoming_edges = set()
-    for source, targets in adjacency.items():
-        if source in node_ids:
-            for t in targets:
-                valid_incoming_edges.add(t['target'])
+    # Create a lookup for node data to access configuration
+    node_map = {n['id']: n for n in nodes}
+
+    # 0. Explicit Configuration Check
+    for node in nodes:
+        if node.get('data', {}).get('isStart', False):
+             print(f"DEBUG_COMPILER: Found explicit start node: {node['id']}")
+             workflow.add_edge(START, node['id'])
+             start_edge_found = True
+             # We assume only one start node for now, or multiple are allowed fan-out
     
-    # Check for implicit start edges (source not in node_ids)
-    for source, targets in adjacency.items():
-        if source not in node_ids:
-            # If the source looks like a start node, use its targets as entry points
-            if source.lower() in ['start', 'start_node', 'begin']:
-                 for t in targets:
-                     workflow.add_edge(START, t['target'])
-                     start_edge_found = True
-            continue 
+    # Check for implicit start edges (source not in node_ids) if not found yet
+    if not start_edge_found:
+        for source, targets in adjacency.items():
+            if source not in node_ids:
+                # If the source looks like a start node, use its targets as entry points
+                if source.lower() in ['start', 'start_node', 'begin']:
+                     for t in targets:
+                         workflow.add_edge(START, t['target'])
+                         start_edge_found = True
+                continue 
 
     if not start_edge_found:
-        # Fallback: Find node with no incoming edges from other nodes
-        orphans = [nid for nid in node_ids if nid not in valid_incoming_edges]
+        # Calculate incoming edges only from valid nodes to identify orphans correctly
+        valid_incoming_edges = set()
+        for source, targets in adjacency.items():
+            if source in node_ids:
+                # OPTIMIZATION: Ignore edges coming from 'iterator' nodes for orphan detection.
+                source_node = node_map.get(source)
+                if source_node and source_node.get('type') == 'iterator':
+                    continue
+                    
+                for t in targets:
+                    valid_incoming_edges.add(t['target'])
+
+        # Fallback: Find node with no incoming edges from other nodes (ignoring iterators)
+        orphans = [n['id'] for n in nodes if n['id'] not in valid_incoming_edges]
+        
         if orphans:
             # Connect the first orphan to START
             workflow.add_edge(START, orphans[0])
@@ -104,9 +123,6 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
             elif nodes:
                  # Fallback 3: Just the first node
                  workflow.add_edge(START, nodes[0]['id'])
-            
-    # Create a lookup for node data to access configuration
-    node_map = {n['id']: n for n in nodes}
 
     # Process edges for registered nodes
     for source_id, targets in adjacency.items():
