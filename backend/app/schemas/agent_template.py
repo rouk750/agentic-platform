@@ -33,6 +33,7 @@ class AgentTemplateVersionRead(BaseModel):
     config: str
     created_at: datetime
     version_number: Optional[int] = None
+    is_locked: bool = False
 
     class Config:
         from_attributes = True

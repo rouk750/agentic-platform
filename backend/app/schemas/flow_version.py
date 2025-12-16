@@ -6,6 +6,7 @@ class FlowVersionRead(BaseModel):
     flow_id: int
     data: str
     created_at: datetime
+    is_locked: bool = False
 
     class Config:
         from_attributes = True
