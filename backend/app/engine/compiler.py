@@ -1,15 +1,31 @@
 from langgraph.graph import StateGraph, START, END
 from langgraph.checkpoint.base import BaseCheckpointSaver
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 
 from app.engine.state import GraphState
 from app.nodes.registry import NODE_REGISTRY
 from app.engine.router import make_router
+from app.nodes.agent import GenericAgentNode
+from app.nodes.tool_node import ToolNode
+from app.nodes.iterator_node import IteratorNode
 
-def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpointSaver] = None):
+def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpointSaver] = None, subgraph_loader: Optional[Callable[[str], Dict[str, Any]]] = None, recursion_depth: int = 0, visited_flow_ids: set = None) -> Any:
     """
     Compiles a React Flow JSON graph into a LangGraph StateGraph.
+    
+    Args:
+        graph_data: The JSON definition of the graph (nodes, edges).
+        checkpointer: Optional persistence mock or object (e.g. SqliteSaver).
+        subgraph_loader: Async/Sync function to load a graph Definition by ID. Required for 'subgraph' nodes.
+        recursion_depth: Safety limit for nesting.
+        visited_flow_ids: Set of Flow IDs continuously visited in this branch to detect cycles.
     """
+    if recursion_depth > 5:
+        raise ValueError("Max recursion depth reached for subgraphs (5). Check for cyclic dependencies.")
+
+    if visited_flow_ids is None:
+        visited_flow_ids = set()
+
     workflow = StateGraph(GraphState)
     
     
@@ -23,6 +39,8 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
     # For this Epic, we assume nodes in JSON map to registered classes.
     
     node_ids = set()
+    interrupt_nodes = []
+    # print(f"DEBUG: Processing nodes with visited: {visited_flow_ids}")
     
     for node in nodes:
         node_id = node['id']
@@ -30,13 +48,64 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
         node_data = node.get('data', {})
         
         node_ids.add(node_id)
+        if node_data.get('require_approval', False):
+             interrupt_nodes.append(node_id)
+             
+        # print(f"DEBUG: Processing node {node_id} type {node_type}")
         
-        if node_type in NODE_REGISTRY:
-            node_class = NODE_REGISTRY[node_type]
+        if node_type == "agent":
+            agent_node = GenericAgentNode(node_id, node_data)
+            workflow.add_node(node_id, agent_node)
+        elif node_type == "tool":
+            tool_name = node_data.get("tool_name") or node_data.get("label")
+            tool_node = ToolNode(node_id, node_data)
+            workflow.add_node(node_id, tool_node)
+        elif node_type == "iterator":
+            iterator_node = IteratorNode(node_id, node_data)
+            workflow.add_node(node_id, iterator_node)
+        elif node_type == "subgraph":
+            # [FEATURE] Subgraph Support
+            if not subgraph_loader:
+                raise ValueError(f"Subgraph node '{node_id}' found but no 'subgraph_loader' provided.")
             
-            # Instantiate the node executable
-            # Some nodes might be functions, some classes. 
-            # Our GenericAgentNode is a class we instantiate.
+            subflow_id = node_data.get("flow_id")
+            if not subflow_id:
+                raise ValueError(f"Subgraph node '{node_id}' is missing 'flow_id' in data.")
+            
+            if str(subflow_id) in visited_flow_ids:
+                raise ValueError(f"Cyclic dependency detected: Flow contains a Subgraph pointing to an ancestor Flow ID {subflow_id}.")
+
+            # Load Subgraph Definition
+            # Note: subgraph_loader might be async, but compile_graph is currently sync.
+            # We assume for now subgraph_loader provided is synchronous/blocking or pre-loaded.
+            # If `run.py` calls this, it might need to pre-fetch.
+            # However, `load_graph_from_db` in run.py is async.
+            # CRITICAL: LangGraph construction is sync. We need the definition NOW.
+            
+            try:
+                # Assuming the loader given handles the sync/async bridge or is just sync
+                subgraph_def = subgraph_loader(subflow_id) 
+                
+                # Recursive Compilation
+                new_visited = visited_flow_ids.copy()
+                new_visited.add(str(subflow_id))
+                
+                compiled_subgraph = compile_graph(
+                    subgraph_def, 
+                    checkpointer=None, # Subgraphs usually share state or don't manage their own checkpointing in the same way? 
+                                       # Actually they can having their own checkpointer but usually we want one global.
+                                       # Passing None to let parent manage it (or pass same checkpointer?)
+                    subgraph_loader=subgraph_loader,
+                    recursion_depth=recursion_depth + 1,
+                    visited_flow_ids=new_visited
+                )
+                
+                workflow.add_node(node_id, compiled_subgraph)
+                
+            except Exception as e:
+                raise ValueError(f"Failed to compile subgraph '{node_id}' (Flow {subflow_id}): {str(e)}")
+        elif node_type in NODE_REGISTRY: # Fallback for other registered nodes
+            node_class = NODE_REGISTRY[node_type]
             try:
                 executable = node_class(node_id, node_data)
                 workflow.add_node(node_id, executable)
@@ -235,9 +304,13 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
                 
                 # Avoid duplicates if multiple handles point to to duplicate nodes (rare but possible)
                 # But LangGraph add_edge is idempotent usually, or we trust the set.
+                if final_target != END and final_target not in node_ids:
+                     print(f"Warning: Edge target {final_target} not found in node registry. Skipping.")
+                     continue
+                     
                 try:
                     workflow.add_edge(source_id, final_target)
                 except Exception as e:
                      print(f"Error adding edge {source_id} -> {final_target}: {e}")
         
-    return workflow.compile(checkpointer=checkpointer)
+    return workflow.compile(checkpointer=checkpointer, interrupt_before=interrupt_nodes)

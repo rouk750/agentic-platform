@@ -18,7 +18,8 @@ export function useAgentRuntime() {
     addMessage,
     clearSession,
     updateIteratorProgress,
-    incrementNodeExecution
+    incrementNodeExecution,
+    setPaused
   } = useRunStore();
 
   const connect = useCallback((graphJson: any, input: string) => {
@@ -135,6 +136,28 @@ export function useAgentRuntime() {
                             setCurrentTool(null);
                             addLog({ event: 'Tool Finished', level: 'info', details: { output: data.output } });
                             break;
+                        case 'interrupt':
+                            setPaused(data.node_id);
+                            
+                            // Add Trace Message for visibility
+                            const pausedCount = useRunStore.getState().nodeExecutionCounts[data.node_id] || 0;
+                            const pausedLabel = useRunStore.getState().nodeLabels[data.node_id] || data.node_id;
+                            
+                            addMessage({
+                                role: 'trace',
+                                content: 'Waiting for approval...',
+                                name: pausedLabel,
+                                nodeId: data.node_id,
+                                traceDetails: {
+                                    nodeId: data.node_id,
+                                    input: "Paused execution.",
+                                    count: pausedCount
+                                }
+                            });
+                            
+                            addLog({ event: 'Execution Paused', level: 'warn', details: { nodeId: data.node_id } });
+                            toast.info(`Workflow paused at ${pausedLabel} for approval.`);
+                            break;
                     }
                 } catch (err) {
                     console.error('Error parsing WS message', err);
@@ -172,6 +195,17 @@ export function useAgentRuntime() {
     }
   }, [setStatus, addLog]);
 
+  const resume = useCallback(() => {
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+          socketRef.current.send(JSON.stringify({ command: 'resume' }));
+          setPaused(null);
+          setStatus('running'); // Optimistic update
+          toast.success("Resuming execution...");
+      } else {
+          toast.error("Cannot resume: Connection lost");
+      }
+  }, [setPaused, setStatus]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -181,5 +215,5 @@ export function useAgentRuntime() {
     };
   }, []);
 
-  return { connect, stop };
+  return { connect, stop, resume };
 }

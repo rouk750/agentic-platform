@@ -24,6 +24,7 @@ type FormData = {
     max_iterations: number;
     output_schema: SchemaField[];
     flexible_mode: boolean;
+    require_approval: boolean;
     isStart: boolean;
 };
 
@@ -35,7 +36,8 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
             max_iterations: data.max_iterations || 0,
             output_schema: data.output_schema || [],
             flexible_mode: data.flexible_mode || false,
-            isStart: data.isStart || false
+            isStart: data.isStart || false,
+            require_approval: data.require_approval || false
         }
     });
 
@@ -62,6 +64,7 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
             setValue('output_schema', data.output_schema || []);
             setValue('flexible_mode', data.flexible_mode || false);
             setValue('isStart', data.isStart || false);
+            setValue('require_approval', data.require_approval || false);
             setSelectedTools(data.tools || []);
         }
     }, [open, data, setValue]);
@@ -75,7 +78,8 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
             tools: selectedTools,
             output_schema: formData.output_schema as SchemaField[],
             flexible_mode: formData.flexible_mode,
-            isStart: formData.isStart
+            isStart: formData.isStart,
+            require_approval: formData.require_approval
         };
 
         if (selectedModel) {
@@ -109,25 +113,47 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
                         </Dialog.Close>
                     </div>
 
-                    <form onSubmit={handleSubmit((data) => onSubmit(data, true))} className="flex flex-col gap-6 overflow-y-auto pr-2">
+                    <form onSubmit={handleSubmit((data) => onSubmit(data as unknown as FormData, true))} className="flex flex-col gap-6 overflow-y-auto pr-2">
 
-                        {/* Entry Point Toggle */}
-                        <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg flex items-center justify-between">
-                            <div>
-                                <label htmlFor="isStart" className="text-sm font-semibold text-slate-800 flex items-center gap-2 cursor-pointer">
-                                    Set as Entry Point
-                                </label>
-                                <p className="text-xs text-slate-500 mt-0.5">
-                                    Forces this agent to be the first step in the workflow.
-                                </p>
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* Entry Point Toggle */}
+                            <div className="p-3 bg-blue-50/50 border border-blue-100 rounded-lg flex items-center justify-between">
+                                <div>
+                                    <label htmlFor="isStart" className="text-sm font-semibold text-slate-800 flex items-center gap-2 cursor-pointer">
+                                        Set as Entry Point
+                                    </label>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        Forces this agent to be the first step in the workflow.
+                                    </p>
+                                </div>
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="isStart"
+                                        {...register('isStart')}
+                                        className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                    />
+                                </div>
                             </div>
-                            <div className="flex items-center">
-                                <input
-                                    type="checkbox"
-                                    id="isStart"
-                                    {...register('isStart')}
-                                    className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                                />
+
+                            {/* Require Approval Toggle */}
+                            <div className="p-3 bg-orange-50/50 border border-orange-100 rounded-lg flex items-center justify-between">
+                                <div>
+                                    <label htmlFor="require_approval" className="text-sm font-semibold text-slate-800 flex items-center gap-2 cursor-pointer">
+                                        Require Approval
+                                    </label>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        Pauses workflow before this agent executes to wait for user confirmation.
+                                    </p>
+                                </div>
+                                <div className="flex items-center">
+                                    <input
+                                        type="checkbox"
+                                        id="require_approval"
+                                        {...register('require_approval')}
+                                        className="w-5 h-5 rounded border-slate-300 text-orange-600 focus:ring-orange-500 cursor-pointer"
+                                    />
+                                </div>
                             </div>
                         </div>
 
@@ -288,14 +314,14 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
                             </button>
                             <button
                                 type="button"
-                                onClick={handleSubmit((data) => onSubmit(data, false))}
+                                onClick={handleSubmit((data) => onSubmit(data as unknown as FormData, false))}
                                 className="px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
                             >
                                 Save
                             </button>
                             <button
                                 type="button"
-                                onClick={handleSubmit((data) => onSubmit(data, true))}
+                                onClick={handleSubmit((data) => onSubmit(data as unknown as FormData, true))}
                                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors"
                             >
                                 Save & Close

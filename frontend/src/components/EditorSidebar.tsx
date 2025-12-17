@@ -1,4 +1,4 @@
-import { Bot, Wrench, GitFork, Settings, Database, Sparkles, RefreshCw, Loader2 } from 'lucide-react';
+import { Bot, Wrench, GitFork, Settings, Database, Sparkles, RefreshCw, Loader2, Workflow } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { templateApi, AgentTemplate } from '../api/templates';
@@ -177,6 +177,20 @@ export default function EditorSidebar() {
                 </div>
             </div>
 
+
+            <div className="space-y-3">
+                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Composition</div>
+                <div
+                    className="flex items-center gap-3 p-3 text-slate-700 bg-white border border-slate-200 rounded-lg cursor-grab hover:border-violet-500 hover:text-violet-600 hover:shadow-sm transition-all"
+                    onDragStart={(event) => onDragStart(event, 'subgraph', { label: 'New Nested Flow' })}
+                    draggable
+                >
+                    <div className="p-2 bg-violet-100 text-violet-600 rounded-lg">
+                        <Workflow size={20} />
+                    </div>
+                    <span className="font-medium">Subgraph (Nested Flow)</span>
+                </div>
+            </div>
 
         </aside>
     );

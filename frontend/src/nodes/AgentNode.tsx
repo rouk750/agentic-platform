@@ -1,6 +1,6 @@
 import { Handle, Position, useReactFlow, type NodeProps, type Node } from '@xyflow/react';
 import type { AgentNodeData } from '../types/agent';
-import { Bot, Settings2, Wrench, FileText, Cpu, Box, Info, History, Loader2 } from 'lucide-react';
+import { Bot, Settings2, Wrench, FileText, Cpu, Box, Info, History, Loader2, UserCheck } from 'lucide-react';
 import { twMerge } from 'tailwind-merge';
 import { useState, useEffect } from 'react';
 import { useRunStore } from '../store/runStore';
@@ -186,6 +186,12 @@ export function AgentNode({ id, data, selected }: NodeProps<AgentNodeType>) {
                         <div className="flex items-center gap-1.5 text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">
                             <Box size={12} />
                             <span className="font-bold text-[10px]">JSON</span>
+                        </div>
+                    )}
+                    {data.require_approval && (
+                        <div className="flex items-center gap-1.5 text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded border border-orange-100" title="Requires Human Approval">
+                            <UserCheck size={12} />
+                            <span className="font-bold text-[10px]">HITL</span>
                         </div>
                     )}
                 </div>

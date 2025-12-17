@@ -11,8 +11,8 @@ export function ChatPanel() {
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const { messages, status, clearSession } = useRunStore();
-    const { connect, stop } = useAgentRuntime();
+    const { messages, status, clearSession, pausedNodeId, nodeLabels } = useRunStore();
+    const { connect, stop, resume } = useAgentRuntime();
 
     // Actually, useGraphStore likely stores nodes/edges.
     // I need to confirm how to get the graph layout to send to backend.
@@ -167,6 +167,24 @@ export function ChatPanel() {
                     </div>
                 )}
             </div>
+
+            {/* Paused/Resume Banner */}
+            {status === 'paused' && pausedNodeId && (
+                <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border-t border-orange-200 dark:border-orange-800 flex items-center justify-between animate-in slide-in-from-bottom-2">
+                    <div className="flex flex-col">
+                        <span className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">Waiting for Approval</span>
+                        <span className="text-sm font-medium text-orange-800 dark:text-orange-200">
+                            Paused at {nodeLabels[pausedNodeId] || pausedNodeId}
+                        </span>
+                    </div>
+                    <button
+                        onClick={resume}
+                        className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg shadow-sm transition-colors font-medium text-sm"
+                    >
+                        <Play size={16} fill="currentColor" /> Resume
+                    </button>
+                </div>
+            )}
 
             {/* Input Area */}
             <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">

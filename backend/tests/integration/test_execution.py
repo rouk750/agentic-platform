@@ -62,7 +62,8 @@ async def test_compile_and_run_simple_graph():
         # Verify
         messages = result["messages"]
         assert len(messages) == 2 
-        assert messages[1].content == "Hello from Mock LLM!"
+        # Agent response is wrapped with sender header
+        assert "Hello from Mock LLM!" in messages[1].content
         assert result["last_sender"] == "agent_1"
 
 @pytest.mark.asyncio
