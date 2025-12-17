@@ -21,7 +21,8 @@ Compiles a React Flow JSON graph into a LangGraph `StateGraph`.
     *   **Iterators**: Wiring up `NEXT` and `COMPLETE` handles.
     *   **Standard**: Simple `workflow.add_edge`.
 5.  **Entry Point**: Detects start via `isStart` flag or orphan detection.
-6.  **Compilation**: Returns `workflow.compile(checkpointer=checkpointer)`.
+6.  **Human-in-the-Loop (HITL)**: Collects nodes with `require_approval=True` and passes them to `interrupt_before`.
+7.  **Compilation**: Returns `workflow.compile(checkpointer=checkpointer, interrupt_before=interrupt_nodes)`.
 
 ## 2. State Management (`state.py`)
 

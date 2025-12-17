@@ -15,9 +15,10 @@ Manages the nodes and edges for the **Flow Editor**.
 ## 2. Execution State (`runStore.ts`)
 Manages the live execution session of an Agent.
 *   **State**:
-    *   `status`: 'idle' | 'connecting' | 'running' | 'done'.
+    *   `status`: 'idle' | 'connecting' | 'running' | 'paused' | 'done'.
     *   `messages`: Chat history (User/AI/Tool/Trace).
     *   `activeNodeId`: Currently executing node (for visual highlighting).
+    *   `pausedNodeId`: Node ID where execution is paused (HITL).
     *   `nodeExecutionCounts`: Track loops.
 *   **Adherences**:
     *   **Updated By**: `useAgentRuntime` (WebSocket events).

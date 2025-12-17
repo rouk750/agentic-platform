@@ -11,7 +11,9 @@ The main execution sidebar with input and log stream.
 *   **Adherences**:
     *   **Stores**: `useRunStore` (messages, status), `useGraphStore` (nodes/edges snapshot).
     *   **Hooks**: `useAgentRuntime` (Websocket connection).
-    *   **UI**: Draggable Resize logic is implemented inline (Candidate for Refactor: `useDraggableWidth`).
+    *   **UI**:
+        *   **Resume Banner**: Displays when status is 'paused' (HITL).
+        *   Draggable Resize logic is implemented inline (Candidate for Refactor: `useDraggableWidth`).
 *   **Refactoring Opportunity**:
     *   The "Header" logic is mixed with layout.
     *   Resize logic is repetitive.

@@ -11,15 +11,16 @@ Manages the WebSocket connection to the backend execution engine.
 function useAgentRuntime(): {
   connect: (graphJson: any, input: string) => void;
   stop: () => void;
+  resume: () => void;
 }
 ```
 
 ### Side Effects & Adherences
 *   **WebSocket**: Connects to `ws://localhost:8000/api/ws/run/{graphId}`.
 *   **Store Updates**: Heavily couples with `runStore` (updating status, logs, tokens).
-    *   `setStatus('connecting' | 'running' | 'done')`
+    *   `setStatus('connecting' | 'running' | 'paused' | 'done')`
     *   `addLog(...)`
-    *   `setActiveNode(...)`
+    *   `setActiveNode(...)`, `setPaused(...)`
 *   **Toast**: Triggers `sonner` toasts on error.
 
 ## 2. API Resource (`useApiResource.ts`)
