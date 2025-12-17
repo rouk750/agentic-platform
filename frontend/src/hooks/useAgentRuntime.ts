@@ -12,13 +12,15 @@ export function useAgentRuntime() {
   const { 
     setStatus, 
     appendToken, 
-    setActiveNode, 
+    addActiveNode,
+    removeActiveNode,
     setCurrentTool,
     addLog, 
     addMessage,
     clearSession,
     updateIteratorProgress,
     incrementNodeExecution,
+    addToolExecution,
     setPaused
   } = useRunStore();
 
@@ -79,7 +81,7 @@ export function useAgentRuntime() {
                             appendToken(data.content);
                             break;
                         case 'node_active':
-                            setActiveNode(data.node_id);
+                            addActiveNode(data.node_id);
                             incrementNodeExecution(data.node_id);
                             
                             // Add Trace Message for visibility
@@ -107,8 +109,26 @@ export function useAgentRuntime() {
                                 updateIteratorProgress(node_id, current, total);
                             }
                             
-                            // Clear active node to prevent it sticking
-                            setActiveNode(null);
+                            // [FEATURE] Tool Highlighting Persistence
+                            // If the node finished with a tool call, keep it active!
+                            // It will be removed when the tool finishes and the agent runs again (and finishes for real)
+                            // OR we rely on a subsequent event to clear it.
+                            // Currently: Agent runs -> Agent Finish (Tool Call) -> Tool Runs -> Tool Finish -> Agent Runs -> Agent Finish (Final).
+                            // So if we skip removal here, it stays active.
+                            // Warning: We must ensure it gets removed eventually.
+                            // When Agent runs again, it's ALREADY active, so addActiveNode is idempotent (if list is set-like or check existence).
+                            // Then Agent finishes for real (no tool call), so we remove it.
+                            
+                            const hasToolCalls = data.data && data.data.has_tool_calls;
+                            
+                            if (!hasToolCalls) {
+                                // Delay removal to ensure visibility for fast interactions
+                                setTimeout(() => {
+                                    removeActiveNode(data.node_id);
+                                }, 1500);
+                            } else {
+                                addLog({ event: 'Agent Waiting for Tool', level: 'info', details: { nodeId: data.node_id } });
+                            }
                             break;
                         case 'done':
                             setStatus('done');
@@ -133,8 +153,16 @@ export function useAgentRuntime() {
                             });
                             break;
                         case 'tool_end':
-                            setCurrentTool(null);
+                            // Delay removal to ensure visibility for fast interactions
+                            setTimeout(() => {
+                                setCurrentTool(null);
+                            }, 500);
                             addLog({ event: 'Tool Finished', level: 'info', details: { output: data.output } });
+                            
+                            // [FEATURE] Tool Stats
+                            if (data.node_id) {
+                                addToolExecution(data.node_id, data.name);
+                            }
                             break;
                         case 'interrupt':
                             setPaused(data.node_id);
@@ -184,7 +212,7 @@ export function useAgentRuntime() {
 
     startSocket();
         
-  }, [setStatus, appendToken, setActiveNode, addLog, addMessage, clearSession, setCurrentTool, updateIteratorProgress]);
+  }, [setStatus, appendToken, addActiveNode, removeActiveNode, addLog, addMessage, clearSession, setCurrentTool, updateIteratorProgress, addToolExecution]);
 
   const stop = useCallback(() => {
     if (socketRef.current) {

@@ -11,6 +11,7 @@ import {
     type NodeChange,
     type EdgeChange,
     type Connection,
+    MarkerType,
 } from '@xyflow/react';
 
 type GraphState = {
@@ -38,8 +39,17 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         });
     },
     onConnect: (connection: Connection) => {
+        const edge = { 
+            ...connection, 
+            type: 'smoothstep',
+            markerEnd: { 
+                type: MarkerType.ArrowClosed,
+                width: 20,
+                height: 20,
+            } 
+        };
         set({
-            edges: addEdge(connection, get().edges),
+            edges: addEdge(edge, get().edges),
         });
     },
     setNodes: (nodes: Node[]) => set({ nodes }),

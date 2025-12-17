@@ -6,5 +6,7 @@ dist/
 build/
 resources/
 logs/
-checkpoints.sqlite
 database.db
+checkpoints.sqlite
+checkpoints.sqlite-shm
+checkpoints.sqlite-wal

@@ -136,7 +136,22 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
                          safe_data = {}
                          if isinstance(output, dict) and "_iterator_metadata" in output:
                              safe_data["_iterator_metadata"] = output["_iterator_metadata"]
+                         
+                         # [FEATURE] Tool Highlighting Persistence
+                         # Check if output contains tool calls (Agent -> Tool)
+                         has_tool_calls = False
+                         if hasattr(output, "tool_calls") and output.tool_calls:
+                             has_tool_calls = True
+                         elif isinstance(output, dict) and output.get("tool_calls"):
+                             has_tool_calls = True
+                         # [FIX] Handle standard LangGraph dict return {"messages": [AIMessage]}
+                         elif isinstance(output, dict) and "messages" in output:
+                             msgs = output["messages"]
+                             if msgs and hasattr(msgs[-1], "tool_calls") and msgs[-1].tool_calls:
+                                 has_tool_calls = True
                              
+                         safe_data["has_tool_calls"] = has_tool_calls
+
                          await websocket.send_json({
                              "type": "node_finished", 
                              "node_id": event["name"],
@@ -144,17 +159,46 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
                          })
 
                     elif kind == "on_tool_start":
+                        # Attempt to find the node that triggered this tool
+                        tags = event.get("tags", [])
+                        node_id = None
+                        
+                        # Debugging: Print tags to see what we get
+                        print(f"DEBUG TOOL START TAGS: {tags} NAME: {event['name']}")
+
+                        for tag in tags:
+                            if tag.startswith("langgraph:node:"):
+                                node_id = tag.split(":", 2)[2]
+                                break
+                        
+                        # Fallback: Check metadata if present
+                        if not node_id and "metadata" in event and "langgraph_node" in event["metadata"]:
+                             node_id = event["metadata"]["langgraph_node"]
+
                         await websocket.send_json({
                             "type": "tool_start", 
                             "name": event["name"], 
-                            "input": event["data"].get("input")
+                            "input": event["data"].get("input"),
+                            "node_id": node_id
                         })
 
                     elif kind == "on_tool_end":
+                        tags = event.get("tags", [])
+                        node_id = None
+                        
+                        for tag in tags:
+                            if tag.startswith("langgraph:node:"):
+                                node_id = tag.split(":", 2)[2]
+                                break
+                                
+                        if not node_id and "metadata" in event and "langgraph_node" in event["metadata"]:
+                             node_id = event["metadata"]["langgraph_node"]
+
                         await websocket.send_json({
                             "type": "tool_end", 
                             "name": event["name"], 
-                            "output": event["data"].get("output")
+                            "output": event["data"].get("output"),
+                            "node_id": node_id
                         })
                 
                 # Check for interruption (HITL)
