@@ -68,6 +68,32 @@ export function ChatMessage({ message }: ChatMessageProps) {
         );
     }
 
+    if (message.role === 'system') {
+        return (
+            <div className="flex justify-center mb-4 px-4 w-full">
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg text-sm flex flex-col gap-1 w-full max-w-[85%]">
+                    <div className="font-bold flex items-center gap-2">
+                        <span>⚠️ System Alert</span>
+                    </div>
+                    <Markdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                            code({ inline, className, children, ...props }: any) {
+                                return (
+                                    <code {...props} className={clsx(className, "bg-red-100 dark:bg-red-900/40 px-1 rounded font-mono text-xs")}>
+                                        {children}
+                                    </code>
+                                );
+                            }
+                        }}
+                    >
+                        {message.content}
+                    </Markdown>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className={clsx("flex gap-3 mb-4", isAi ? "justify-start" : "justify-end")}>
             {isAi && (

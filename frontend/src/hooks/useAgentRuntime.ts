@@ -139,6 +139,13 @@ export function useAgentRuntime() {
                             setStatus('error');
                             addLog({ event: 'Runtime Error', level: 'error', details: { message: data.message } });
                             console.error("Agent Runtime Error:", data.message);
+                            
+                            // [FEATURE] Persistent System Error Message
+                            addMessage({
+                                role: 'system',
+                                content: data.message || 'An unknown error occurred.'
+                            });
+
                             toast.error(data.message || 'An error occurred during execution');
                             break;
                         case 'tool_start':

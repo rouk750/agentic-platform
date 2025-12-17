@@ -232,5 +232,16 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
         if not error_message:
             error_message = f"Unknown error ({type(e).__name__})"
             
-        await websocket.send_json({"type": "error", "message": error_message})
+        if "prompt too long" in str(e) or "context length" in str(e).lower():
+            friendly_message = (
+                "⚠️ **Context Limit Exceeded**\n\n"
+                "The conversation history is too long for the selected model (Context Window Full).\n\n"
+                "**Solutions:**\n"
+                "1. **Clear Session**: Use the eraser icon to start fresh.\n"
+                "2. **Reset**: Use a different model with a larger context window.\n"
+                "3. **Optimize**: The system has already truncated tool outputs, but the history is still too large."
+            )
+            await websocket.send_json({"type": "error", "message": friendly_message})
+        else:
+            await websocket.send_json({"type": "error", "message": error_message})
         await websocket.close()
