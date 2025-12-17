@@ -11,7 +11,7 @@ This directory (`frontend/src/components`) contains the specific UI features of 
 The core canvas wrapper around `ReactFlow`.
 *   **Props**: None (uses `useParams` for ID).
 *   **Adherences**:
-    *   **Store**: `useGraphStore` (nodes/edges), `useRunStore` (reset).
+    *   **Store**: `useGraphStore` (nodes/edges), `useRunStore` (reset, `activeNodeIds`, `nodeExecutionCounts`).
     *   **API**: `flowApi` (load/save).
     *   **Drag & Drop**: Native HTML5 DnD handling.
 *   **Refactoring Opportunity**:

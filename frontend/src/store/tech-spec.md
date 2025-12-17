@@ -17,9 +17,10 @@ Manages the live execution session of an Agent.
 *   **State**:
     *   `status`: 'idle' | 'connecting' | 'running' | 'paused' | 'done'.
     *   `messages`: Chat history (User/AI/Tool/Trace).
-    *   `activeNodeId`: Currently executing node (for visual highlighting).
+    *   `activeNodeIds`: List of currently executing node IDs (supports parallel execution).
     *   `pausedNodeId`: Node ID where execution is paused (HITL).
     *   `nodeExecutionCounts`: Track loops.
+    *   `toolStats`: Track tool execution counts per node.
 *   **Adherences**:
     *   **Updated By**: `useAgentRuntime` (WebSocket events).
     *   **Consumed By**:

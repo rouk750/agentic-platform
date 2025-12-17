@@ -18,7 +18,7 @@ The primary LLM Agent node.
 *   **Adherences**:
     *   **Dialog**: Opens `AgentConfigDialog`.
     *   **API**: Uses `templateApi.getVersions` for version history.
-    *   **Store**: Reads `activeNodeId` from `runStore` for visual highlighting.
+    *   **Store**: Reads `activeNodeIds` from `runStore` for visual highlighting.
 
 ### `SmartNode` (`SmartNode.tsx`)
 A variant of AgentNode with more structured goals/guardrails (not analyzed in depth but follows similar pattern).
@@ -35,11 +35,13 @@ Logic branching based on string matching or LLM classification.
 
 ### `ToolNode` (`ToolNode.tsx`)
 A placeholder node representing tool execution context.
-*   **UI**: Displays "Executing..." state when `currentToolName` matches.
+*   **UI**:
+    *   Displays "Executing..." state when active.
+    *   Displays **Execution History** list at the bottom.
 *   **Handles**:
     *   **Target (Top)**: Input.
     *   **Source (Left)**: Output.
-*   **Adherences**: `useRunStore` (checking `currentToolName`).
+*   **Adherences**: `useRunStore` (checking `activeNodeIds` and `toolStats`).
 
 ## 3. Configuration Dialogs
 These are large forms triggered by the nodes.

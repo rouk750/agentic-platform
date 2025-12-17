@@ -93,8 +93,8 @@ Handles streaming execution of agents.
 3.  **Stream**: Loops `app.astream_events`.
     *   `token`: LLM partial output.
     *   `node_active`: Logic node start.
-    *   `node_finished`: Node output.
-    *   `tool_start/end`: Tool execution details.
+    *   `node_finished`: Node output (includes `has_tool_calls` flag).
+    *   `tool_start/end`: Tool execution details (includes `node_id` of the caller).
     *   `interrupt`: Sent when execution pauses at a breakpoint (HITL). Payload: `{type: "interrupt", node_id: "..."}`.
 4.  **Control Commands**:
     *   **Resume**: Client sends `{"command": "resume"}` to continue execution from a paused state.
