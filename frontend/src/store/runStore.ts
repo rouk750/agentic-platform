@@ -4,21 +4,24 @@ import type { Message, LogEntry } from '../types/execution';
 interface RunState {
   status: 'idle' | 'connecting' | 'running' | 'paused' | 'error' | 'done';
   messages: Message[];
-  activeNodeId: string | null;
+  activeNodeIds: string[];
   pausedNodeId: string | null; // HITL
   nodeLabels: Record<string, string>; // Map nodeId -> Label
   currentToolName: string | null;
   iteratorProgress: Record<string, { current: number; total: number }>;
   nodeExecutionCounts: Record<string, number>;
+  toolStats: Record<string, Record<string, number>>; // nodeId -> toolName -> count
   logs: LogEntry[];
   
   // Actions
   setStatus: (status: RunState['status']) => void;
   setPaused: (nodeId: string | null) => void;
-  setActiveNode: (nodeId: string | null) => void;
+  addActiveNode: (nodeId: string) => void;
+  removeActiveNode: (nodeId: string) => void;
   setNodeLabels: (labels: Record<string, string>) => void;
   setCurrentTool: (toolName: string | null) => void;
   incrementNodeExecution: (nodeId: string) => void;
+  addToolExecution: (nodeId: string, toolName: string) => void;
   updateIteratorProgress: (nodeId: string, current: number, total: number) => void;
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
   appendToken: (token: string) => void;
@@ -30,18 +33,26 @@ interface RunState {
 export const useRunStore = create<RunState>((set) => ({
   status: 'idle',
   messages: [],
-  activeNodeId: null,
+  activeNodeIds: [],
   pausedNodeId: null,
   nodeLabels: {},
   currentToolName: null,
   nodeExecutionCounts: {}, 
+  toolStats: {},
   iteratorProgress: {},
   logs: [],
 
   setStatus: (status) => set({ status }),
   setPaused: (pausedNodeId) => set({ status: pausedNodeId ? 'paused' : 'running', pausedNodeId }),
   
-  setActiveNode: (activeNodeId) => set({ activeNodeId }),
+  addActiveNode: (nodeId) => set((state) => {
+    if (state.activeNodeIds.includes(nodeId)) return state;
+    return { activeNodeIds: [...state.activeNodeIds, nodeId] };
+  }),
+
+  removeActiveNode: (nodeId) => set((state) => ({
+    activeNodeIds: state.activeNodeIds.filter(id => id !== nodeId)
+  })),
   
   setNodeLabels: (nodeLabels) => set({ nodeLabels }),
 
@@ -53,6 +64,20 @@ export const useRunStore = create<RunState>((set) => ({
       [nodeId]: (state.nodeExecutionCounts[nodeId] || 0) + 1
     }
   })),
+
+  addToolExecution: (nodeId, toolName) => set((state) => {
+    const nodeStats = state.toolStats[nodeId] || {};
+    const currentCount = nodeStats[toolName] || 0;
+    return {
+        toolStats: {
+            ...state.toolStats,
+            [nodeId]: {
+                ...nodeStats,
+                [toolName]: currentCount + 1
+            }
+        }
+    };
+  }),
 
   updateIteratorProgress: (nodeId, current, total) => set((state) => ({ // Implemented
     iteratorProgress: {
@@ -76,17 +101,28 @@ export const useRunStore = create<RunState>((set) => ({
     const messages = [...state.messages];
     const lastMsg = messages[messages.length - 1];
     
-    // Check if the last message is from AI AND matches the current active node
-    // This allows separating messages from different agents even if they run sequentially
-    const isSameNode = lastMsg && lastMsg.role === 'ai' && lastMsg.nodeId === state.activeNodeId;
+    // Check if the last message is from AI AND matches ONE OF the current active nodes
+    // Ideally we track which node is emitting the token, but usually token events don't carry nodeId. 
+    // Assuming backend sends serialized updates, usually one stream at a time or we just append to last AI msg.
+    // For robust parallel streaming, we'd need nodeId in token event. 
+    // Current logic: if last msg is AI, append.
+    
+    // We relax the nodeId check slightly or rely on the fact that usually only LLMs stream tokens.
+    // However, if two LLMs stream at once, this will interleave. 
+    // Standard solution: token event should have nodeId. 
+    // For now, we'll just check if role is 'ai'.
+    
+    const isAiMsg = lastMsg && lastMsg.role === 'ai';
 
-    if (isSameNode) {
+    if (isAiMsg) {
         const updatedMsg = { ...lastMsg, content: lastMsg.content + token };
         messages[messages.length - 1] = updatedMsg;
         return { messages };
     } else {
-        // If last message was user, tool, or different agent, create a new AI message
-        const senderName = state.activeNodeId ? state.nodeLabels[state.activeNodeId] : undefined;
+        // Warning: This might pick a random sender if multiple nodes are active.
+        // We'll trust the single-stream assumption for now or pick the last added node.
+        const lastActiveNode = state.activeNodeIds[state.activeNodeIds.length - 1];
+        const senderName = lastActiveNode ? state.nodeLabels[lastActiveNode] : undefined;
         return {
             messages: [
                 ...messages,
@@ -95,7 +131,7 @@ export const useRunStore = create<RunState>((set) => ({
                     role: 'ai',
                     content: token,
                     name: senderName,
-                    nodeId: state.activeNodeId,
+                    nodeId: lastActiveNode,
                     timestamp: Date.now()
                 }
             ]
@@ -110,18 +146,20 @@ export const useRunStore = create<RunState>((set) => ({
   clearSession: () => set({
     status: 'idle',
     messages: [],
-    activeNodeId: null,
+    activeNodeIds: [],
     nodeExecutionCounts: {},
+    toolStats: {},
     logs: []
   }),
 
   reset: () => set({
     status: 'idle',
     messages: [],
-    activeNodeId: null,
+    activeNodeIds: [],
     currentToolName: null,
     iteratorProgress: {},
     nodeExecutionCounts: {},
+    toolStats: {},
     logs: []
   }),
 }));

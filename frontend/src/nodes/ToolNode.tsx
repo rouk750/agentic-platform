@@ -7,26 +7,26 @@ import { TechnicalInfoDialog } from './TechnicalInfoDialog';
 
 export function ToolNode({ id, data, selected }: NodeProps) {
     const { updateNodeData } = useReactFlow();
-    const activeNodeId = useRunStore((state) => state.activeNodeId);
+    const activeNodeIds = useRunStore((state) => state.activeNodeIds);
     const currentToolName = useRunStore((state) => state.currentToolName);
-    const isActive = id === activeNodeId;
-    const isExecuting = !!currentToolName;
-    const isEffectiveActive = isActive || isExecuting;
+    const isActive = activeNodeIds.includes(id);
     const [infoOpen, setInfoOpen] = useState(false);
+    const toolStats = useRunStore((state) => state.toolStats[id] || {});
+    const hasStats = Object.keys(toolStats).length > 0;
 
     return (
         <div
             className={twMerge(
                 'bg-white border-2 rounded-xl w-64 shadow-sm transition-all duration-300 group',
                 selected ? 'border-purple-500 ring-2 ring-purple-500/20 shadow-md' : 'border-slate-200 hover:border-slate-300',
-                isEffectiveActive && 'border-purple-500 ring-4 ring-purple-500/20 shadow-xl scale-105'
+                isActive && 'border-purple-500 ring-4 ring-purple-500/20 shadow-xl scale-105'
             )}
         >
             {/* Header */}
             <div className="flex items-center gap-3 p-3 border-b border-slate-100 bg-gradient-to-b from-white to-slate-50/50 rounded-t-xl">
                 <div className={twMerge(
                     "p-2 rounded-lg transition-colors",
-                    isEffectiveActive ? "bg-purple-100 text-purple-600" : "bg-purple-50 text-purple-500"
+                    isActive ? "bg-purple-100 text-purple-600" : "bg-purple-50 text-purple-500"
                 )}>
                     <Wrench size={18} />
                 </div>
@@ -59,31 +59,45 @@ export function ToolNode({ id, data, selected }: NodeProps) {
 
             {/* Content Area */}
             <div className="p-3 bg-slate-50/30 rounded-b-xl">
-                {isEffectiveActive && currentToolName ? (
-                    <div className="flex items-center gap-2 text-xs font-medium text-purple-600 animate-pulse">
+                {isActive && currentToolName ? (
+                    <div className="flex items-center gap-2 text-xs font-medium text-purple-600 animate-pulse mb-2">
                         <Loader2 size={12} className="animate-spin" />
                         <span>Executing {currentToolName}...</span>
                     </div>
-                ) : (
-                    <div className="text-xs text-slate-500 leading-relaxed">
-                        Dynamically executes tools requested by the Agent and returns results.
+                ) : null}
+
+                {hasStats ? (
+                    <div className="mt-2 space-y-1 border-t border-slate-100 pt-2">
+                        {Object.entries(toolStats).map(([toolName, count]) => (
+                            <div key={toolName} className="flex justify-between items-center text-[10px] text-slate-500 font-mono">
+                                <span className="truncate max-w-[140px]" title={toolName}>{toolName}</span>
+                                <span className="bg-slate-100 px-1.5 py-0.5 rounded-full text-slate-600 font-semibold">{count}</span>
+                            </div>
+                        ))}
                     </div>
+                ) : (
+                    !isActive && (
+                        <div className="text-xs text-slate-500 leading-relaxed">
+                            Dynamically executes tools requested by the Agent and returns results.
+                        </div>
+                    )
                 )}
             </div>
 
             {/* Handles */}
-            <div className="absolute -left-3 top-1/2 -translate-y-5 flex items-center">
+            {/* Handles */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-2 flex items-center">
                 <Handle
                     type="target"
-                    position={Position.Left}
+                    position={Position.Top}
                     className="!w-3 !h-3 !bg-slate-400 !border-2 !border-white transition-transform hover:scale-125"
                 />
             </div>
 
-            <div className="absolute -right-3 top-1/2 -translate-y-5 flex items-center">
+            <div className="absolute -left-3 top-1/2 -translate-y-1/2 flex items-center">
                 <Handle
                     type="source"
-                    position={Position.Right}
+                    position={Position.Left}
                     className="!w-3 !h-3 !bg-purple-500 !border-2 !border-white transition-transform hover:scale-125"
                 />
             </div>

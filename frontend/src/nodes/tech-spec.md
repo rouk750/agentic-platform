@@ -36,6 +36,9 @@ Logic branching based on string matching or LLM classification.
 ### `ToolNode` (`ToolNode.tsx`)
 A placeholder node representing tool execution context.
 *   **UI**: Displays "Executing..." state when `currentToolName` matches.
+*   **Handles**:
+    *   **Target (Top)**: Input.
+    *   **Source (Left)**: Output.
 *   **Adherences**: `useRunStore` (checking `currentToolName`).
 
 ## 3. Configuration Dialogs

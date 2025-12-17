@@ -15,10 +15,10 @@ const IteratorNode = memo(({ id, data, isConnectable }: NodeProps<IteratorNodeTy
     const { updateNodeData } = useReactFlow();
 
     // Get Run State
-    const activeNodeId = useRunStore((state) => state.activeNodeId);
+    const activeNodeIds = useRunStore((state) => state.activeNodeIds);
     const iteratorProgress = useRunStore((state) => state.iteratorProgress[id]);
 
-    const isActive = activeNodeId === id;
+    const isActive = activeNodeIds.includes(id);
 
     // Derived progress string
 
@@ -83,32 +83,32 @@ const IteratorNode = memo(({ id, data, isConnectable }: NodeProps<IteratorNodeTy
                     )}
                 </div>
 
-                {/* Output Handles */}
+                {/* Handles with Labels */}
 
-                {/* 1. Next Item Output (Right - Middle) */}
-                <div className="absolute right-0 top-[50%] flex items-center pr-2" style={{ transform: 'translateY(-50%)' }}>
-                    <div className="text-[10px] text-gray-500 mr-1 bg-white px-1 border-gray-100 border rounded absolute right-4 whitespace-nowrap">Next Item</div>
+                {/* 1. Next Item Output (Bottom - Center) */}
+                <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex flex-col items-center">
+                    <span className="text-[10px] text-gray-500 bg-white px-1 border-gray-100 border rounded mb-1 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Next Item</span>
                 </div>
                 <Handle
                     type="source"
-                    position={Position.Right}
+                    position={Position.Bottom}
                     id="next"
-                    style={{ top: '50%', background: '#f97316' }}
+                    style={{ background: '#f97316' }}
                     isConnectable={isConnectable}
-                    className="w-3 h-3"
+                    className="w-3 h-3 transition-transform hover:scale-125"
                 />
 
-                {/* 2. Complete Output (Right - Bottom) */}
-                <div className="absolute right-0 bottom-4 flex items-center pr-2">
-                    <div className="text-[10px] text-gray-500 mr-1 bg-white px-1 border-gray-100 border rounded absolute right-4 whitespace-nowrap">Complete</div>
+                {/* 2. Complete Output (Right - Middle) */}
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 flex items-center pr-2">
+                    <div className="text-[10px] text-gray-500 mr-2 bg-white px-1 border-gray-100 border rounded absolute right-2 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Complete</div>
                 </div>
                 <Handle
                     type="source"
                     position={Position.Right}
                     id="complete"
-                    style={{ top: '85%', background: '#22c55e' }}
+                    style={{ top: '50%', background: '#22c55e' }}
                     isConnectable={isConnectable}
-                    className="w-3 h-3"
+                    className="w-3 h-3 transition-transform hover:scale-125"
                 />
             </div>
 

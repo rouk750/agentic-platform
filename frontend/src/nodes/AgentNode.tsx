@@ -13,8 +13,8 @@ type AgentNodeType = Node<AgentNodeData>;
 
 export function AgentNode({ id, data, selected }: NodeProps<AgentNodeType>) {
     const { updateNodeData } = useReactFlow();
-    const activeNodeId = useRunStore((state) => state.activeNodeId);
-    const isActive = id === activeNodeId;
+    const activeNodeIds = useRunStore((state) => state.activeNodeIds);
+    const isActive = activeNodeIds.includes(id);
     const [configOpen, setConfigOpen] = useState(false);
     const [infoOpen, setInfoOpen] = useState(false);
 
@@ -197,7 +197,7 @@ export function AgentNode({ id, data, selected }: NodeProps<AgentNodeType>) {
                 </div>
 
                 {/* Handles with Labels */}
-                <div className="absolute -left-3 top-1/2 -translate-y-12 flex items-center">
+                <div className="absolute -left-3 top-1/2 -translate-y-1/2 flex items-center">
                     <Handle
                         type="target"
                         position={Position.Left}
@@ -206,7 +206,7 @@ export function AgentNode({ id, data, selected }: NodeProps<AgentNodeType>) {
                     <span className="text-[10px] ml-2 text-slate-400 bg-white px-1 opacity-0 group-hover:opacity-100 transition-opacity">Input</span>
                 </div>
 
-                <div className="absolute -right-3 top-1/2 -translate-y-12 flex items-center">
+                <div className="absolute -right-3 top-1/2 -translate-y-1/2 flex items-center">
                     <span className="text-[10px] mr-2 text-slate-400 bg-white px-1 opacity-0 group-hover:opacity-100 transition-opacity">Response</span>
                     <Handle
                         type="source"

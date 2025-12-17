@@ -7,6 +7,7 @@ import {
     useReactFlow,
     Panel,
     ReactFlowProvider,
+    MarkerType,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { v4 as uuidv4 } from 'uuid';
@@ -147,14 +148,29 @@ function FlowEditorInstance() {
     }, [id, setNodes, setEdges, navigate]);
 
     // Active Edge Highlighting
-    const activeNodeId = useRunStore((state) => state.activeNodeId);
+    const activeNodeIds = useRunStore((state) => state.activeNodeIds);
 
     useEffect(() => {
         const { edges } = useGraphStore.getState();
 
         const newEdges = edges.map((edge) => {
             // If there's an active node, highlight edges targeting it
-            if (activeNodeId && edge.target === activeNodeId) {
+            const isTargetActive = activeNodeIds.includes(edge.target);
+
+            // Refinement: Only highlight if the SOURCE node has also executed at least once (or we don't know about it e.g. START)
+            // This prevents "return edges" (Tool -> Agent) from highlighting before the Tool has actually run.
+            const sourceExecutionCount = useRunStore.getState().nodeExecutionCounts[edge.source] || 0;
+            const isSourceReady = sourceExecutionCount > 0;
+
+            // Special case: Edges from "START" (implicit or explicit) might not have execution counts if they are virtual.
+            // But usually edges from actual nodes (like Tools) will have counts.
+            // If the source node is NOT in the active list and has count 0, it definitely hasn't run.
+            // But wait, "START" isn't in nodes usually. 
+            // We can check if source exists in `nodes`. If it does, check count. If not (e.g. system START), assume ready.
+            const sourceNode = nodes.find(n => n.id === edge.source);
+            const shouldHighlight = isTargetActive && (!sourceNode || isSourceReady);
+
+            if (shouldHighlight) {
                 return {
                     ...edge,
                     animated: true,
@@ -173,7 +189,7 @@ function FlowEditorInstance() {
         if (JSON.stringify(newEdges) !== JSON.stringify(edges)) {
             setEdges(newEdges);
         }
-    }, [activeNodeId, setEdges]);
+    }, [activeNodeIds, setEdges]);
 
     const onDragOver = useCallback((event: React.DragEvent) => {
         event.preventDefault();
@@ -321,6 +337,14 @@ function FlowEditorInstance() {
                 onDragOver={onDragOver}
                 onDrop={onDrop}
                 fitView
+                defaultEdgeOptions={{
+                    type: 'smoothstep',
+                    markerEnd: {
+                        type: MarkerType.ArrowClosed,
+                        width: 20,
+                        height: 20,
+                    }
+                }}
             >
                 <Background gap={20} color="#e2e8f0" />
                 <Controls className="bg-white border-slate-200 shadow-md text-slate-600" />
