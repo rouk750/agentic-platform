@@ -7,7 +7,10 @@ This directory (`frontend/src/nodes`) contains the specific React Flow node comp
 
 ### `AgentNode` (`AgentNode.tsx`)
 The primary LLM Agent node.
-*   **Data Props**: `AgentNodeData` (`system_prompt`, `modelName`, `tools`, etc.).
+*   **Data Props**: `AgentNodeData` (`system_prompt`, `modelName`, `tools`, `require_approval`, etc.).
+*   **Visuals**:
+    *   **HITL Badge**: Displays if `require_approval` is true.
+    *   **Status Indicators**: Active/Loop Count.
 *   **Handles**:
     *   **Target (Left)**: Input.
     *   **Source (Right)**: Output.
@@ -37,7 +40,7 @@ A placeholder node representing tool execution context.
 
 ## 3. Configuration Dialogs
 These are large forms triggered by the nodes.
-*   `AgentConfigDialog.tsx`: Heavy coupling with `api/settings` and `api/tools`.
+*   `AgentConfigDialog.tsx`: Heavy coupling with `api/settings` and `api/tools`. Includes "Require Approval" (HITL) toggle.
 *   `RouterConfigDialog.tsx`: Manages the list of routes.
 
 ## 4. Refactoring Opportunities

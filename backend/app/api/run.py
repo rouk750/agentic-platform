@@ -14,48 +14,62 @@ from langchain_core.messages import HumanMessage
 router = APIRouter()
 
 # Mock loader for now
-async def load_graph_from_db(graph_id: str) -> Dict[str, Any]:
-    # TODO: Implement actual DB load
-    # Return empty structure or raise error if not found
-    # For MVP we might need to assume the Frontend sends the JSON first.
-    return {"nodes": [], "edges": []} 
+
+from app.database import engine
+from sqlmodel import Session, select
+from app.models.flow import Flow
+
+def sync_subgraph_loader(flow_id_str: str) -> Dict[str, Any]:
+    """
+    Synchronously load a flow definition from the DB.
+    Used by the compiler for recursive subgraph loading.
+    """
+    try:
+        fid = int(flow_id_str)
+    except ValueError:
+        raise ValueError(f"Invalid Flow ID format: {flow_id_str}")
+        
+    with Session(engine) as session:
+        flow = session.get(Flow, fid)
+        if not flow:
+            raise ValueError(f"Subgraph Flow {fid} not found in database.")
+        if not flow.data:
+             return {"nodes": [], "edges": []}
+        return json.loads(flow.data)
 
 @router.websocket("/ws/run/{graph_id}")
 async def websocket_endpoint(websocket: WebSocket, graph_id: str):
     await websocket.accept()
     
     try:
-        # 1. Initialization: Receive Graph JSON (or load from DB)
-        # The prompt implies: "1. Charger et compiler le graphe ... graph_data = load_graph_from_db(graph_id)"
-        # But since we are building the tool and the user draws it, 
-        # normally we save the graph first via REST API, then Run it via WS.
-        # Assuming the graph is saved. We'll use a placeholder or check if US 2 was implemented (it says "Epic 2 (Le JSON du graphe est disponible)").
-        # So we assume there IS a way to get it. 
-        # I'll add a provisional "graph_data" load.
-        
-        # For now, if load_graph_from_db returns empty, we might try to receive it from WS for dev testing.
-        # Check first message.
+        # 1. Initialization
         init_data = await websocket.receive_json()
         
         graph_data = None
         if "graph" in init_data:
              graph_data = init_data["graph"]
         else:
-             # Assume load from DB
-             # graph_data = await load_graph_from_db(graph_id)
-             pass
+             # Load from DB if not in payload
+             # usage: sync_subgraph_loader serves as a generic loader too
+             try:
+                 graph_data = sync_subgraph_loader(graph_id)
+             except Exception as e:
+                 print(f"Failed to load graph {graph_id}: {e}")
         
         if not graph_data:
-            await websocket.send_json({"error": "No graph data provided"})
+            await websocket.send_json({"error": "No graph data provided or found."})
             await websocket.close()
             return
 
-        # Setup Persistence - use context manager
-        # checkpointer is an AsyncContextManager, so we must use 'async with'
+        # Setup Persistence
         cm = await get_graph_checkpointer()
         async with cm as checkpointer:
-            # Compile
-            app = compile_graph(graph_data, checkpointer=checkpointer)
+            # Compile with Subgraph Support
+            app = compile_graph(
+                graph_data, 
+                checkpointer=checkpointer,
+                subgraph_loader=sync_subgraph_loader
+            )
             
             # 2. Input Handling
             user_input = init_data.get("input")
@@ -76,85 +90,93 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
                 "recursion_limit": recursion_limit
             }
             
-            async for event in app.astream_events(inputs, config=config, version="v2"):
-                kind = event["event"]
-                
-                if kind == "on_chat_model_stream":
-                    content = event["data"]["chunk"].content
-                    if content:
-                        await websocket.send_json({"type": "token", "content": content})
-                        
-                elif kind == "on_chain_start":
-                    # Detect if it's a node start
-                    node_name = event["name"]
-                    if node_name and node_name not in ["__start__", "__end__", "LangGraph", "route_tool", "route_iterator"]:
-                        # print(f"DEBUG CHAIN START {node_name}: {event}")
-                        # Event data usually has 'input' key.
-                        node_input = event["data"].get("input")
-                        
-                        # Fallback: sometimes it's directly in data if not keyed as input?
-                        if not node_input:
-                             node_input = event["data"]
+            # Use current_inputs for the loop
+            current_inputs = inputs
 
-                        # Ensure serializability (e.g. for HumanMessage objects)
-                        # We can use a simple string conversion for complex objects for now, 
-                        # or a custom encoder if we want structured data.
-                        def make_serializable(obj):
-                            if hasattr(obj, "content"): return obj.content # Handle Messages
-                            if hasattr(obj, "dict"): return obj.dict() # Handle Pydantic
-                            try:
-                                json.dumps(obj)
-                                return obj
-                            except (TypeError, OverflowError):
-                                return str(obj)
+            while True:
+                async for event in app.astream_events(current_inputs, config=config, version="v2"):
+                    kind = event["event"]
+                    
+                    if kind == "on_chat_model_stream":
+                        content = event["data"]["chunk"].content
+                        if content:
+                            await websocket.send_json({"type": "token", "content": content})
+                            
+                    elif kind == "on_chain_start":
+                        # Detect if it's a node start
+                        node_name = event["name"]
+                        if node_name and node_name not in ["__start__", "__end__", "LangGraph", "route_tool", "route_iterator"]:
+                            node_input = event["data"].get("input") or event["data"]
 
-                        safe_input = make_serializable(node_input)
-                        if isinstance(safe_input, dict):
-                             # Recursive sanitization might be needed if dict contains objects
-                             # For simplicity, if standard json dump fails, we str() the whole thing
-                             try:
-                                 json.dumps(safe_input)
-                             except TypeError:
-                                 safe_input = str(node_input)
+                            # Ensure serializability
+                            def make_serializable(obj):
+                                if hasattr(obj, "content"): return obj.content
+                                if hasattr(obj, "dict"): return obj.dict()
+                                try:
+                                    json.dumps(obj)
+                                    return obj
+                                except (TypeError, OverflowError):
+                                    return str(obj)
 
+                            safe_input = make_serializable(node_input)
+                            if isinstance(safe_input, dict):
+                                 try:
+                                     json.dumps(safe_input)
+                                 except TypeError:
+                                     safe_input = str(node_input)
+
+                            await websocket.send_json({
+                                "type": "node_active", 
+                                "node_id": node_name,
+                                "input": safe_input
+                            })
+                    
+                    elif kind == "on_chain_end":
+                         output = event["data"].get("output")
+                         safe_data = {}
+                         if isinstance(output, dict) and "_iterator_metadata" in output:
+                             safe_data["_iterator_metadata"] = output["_iterator_metadata"]
+                             
+                         await websocket.send_json({
+                             "type": "node_finished", 
+                             "node_id": event["name"],
+                             "data": safe_data
+                         })
+
+                    elif kind == "on_tool_start":
                         await websocket.send_json({
-                            "type": "node_active", 
-                            "node_id": node_name,
-                            "input": safe_input
+                            "type": "tool_start", 
+                            "name": event["name"], 
+                            "input": event["data"].get("input")
+                        })
+
+                    elif kind == "on_tool_end":
+                        await websocket.send_json({
+                            "type": "tool_end", 
+                            "name": event["name"], 
+                            "output": event["data"].get("output")
                         })
                 
-                elif kind == "on_chain_end":
-                     # Pass the output which might contain metadata like _iterator_metadata
-                     output = event["data"].get("output")
-                     
-                     # Safe serialization for frontend:
-                     # Only pull out specific metadata we need to avoid "Object not serializable" errors
-                     # with complex LangChain objects.
-                     safe_data = {}
-                     if isinstance(output, dict) and "_iterator_metadata" in output:
-                         safe_data["_iterator_metadata"] = output["_iterator_metadata"]
-                         
-                     await websocket.send_json({
-                         "type": "node_finished", 
-                         "node_id": event["name"],
-                         "data": safe_data
-                     })
-
-                elif kind == "on_tool_start":
-                    await websocket.send_json({
-                        "type": "tool_start", 
-                        "name": event["name"], 
-                        "input": event["data"].get("input")
-                    })
-
-                elif kind == "on_tool_end":
-                    await websocket.send_json({
-                        "type": "tool_end", 
-                        "name": event["name"], 
-                        "output": event["data"].get("output")
-                    })
-                     
-            await websocket.send_json({"type": "done"})
+                # Check for interruption (HITL)
+                snapshot = await app.aget_state(config)
+                if snapshot.next:
+                    # Paused at a breakpoint
+                    next_node = snapshot.next[0]
+                    await websocket.send_json({"type": "interrupt", "node_id": next_node})
+                    
+                    # Wait for Resume command
+                    cmd = await websocket.receive_json()
+                    if cmd.get("command") == "resume":
+                         # Resume with None input to proceed from breakpoint
+                         current_inputs = None 
+                         continue
+                    else:
+                        # Cancel or other command (e.g. update state?)
+                        break
+                else:
+                    # Completed
+                    await websocket.send_json({"type": "done"})
+                    break
         
     except WebSocketDisconnect:
         print(f"Client disconnected {graph_id}")

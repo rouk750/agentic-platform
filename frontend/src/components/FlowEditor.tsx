@@ -22,7 +22,9 @@ import { RouterNode } from '../nodes/RouterNode';
 import { ToolNode } from '../nodes/ToolNode';
 import { RAGNode } from '../nodes/RAGNode';
 import { SmartNode } from '../nodes/SmartNode';
+
 import IteratorNode from '../nodes/IteratorNode';
+import { SubgraphNode } from '../nodes/SubgraphNode';
 
 const nodeTypes = {
     agent: AgentNode,
@@ -31,6 +33,7 @@ const nodeTypes = {
     rag: RAGNode,
     smart_node: SmartNode,
     iterator: IteratorNode,
+    subgraph: SubgraphNode,
 };
 
 function FlowEditorInstance() {

@@ -2,9 +2,10 @@ import { create } from 'zustand';
 import type { Message, LogEntry } from '../types/execution';
 
 interface RunState {
-  status: 'idle' | 'connecting' | 'running' | 'error' | 'done';
+  status: 'idle' | 'connecting' | 'running' | 'paused' | 'error' | 'done';
   messages: Message[];
   activeNodeId: string | null;
+  pausedNodeId: string | null; // HITL
   nodeLabels: Record<string, string>; // Map nodeId -> Label
   currentToolName: string | null;
   iteratorProgress: Record<string, { current: number; total: number }>;
@@ -13,6 +14,7 @@ interface RunState {
   
   // Actions
   setStatus: (status: RunState['status']) => void;
+  setPaused: (nodeId: string | null) => void;
   setActiveNode: (nodeId: string | null) => void;
   setNodeLabels: (labels: Record<string, string>) => void;
   setCurrentTool: (toolName: string | null) => void;
@@ -29,6 +31,7 @@ export const useRunStore = create<RunState>((set) => ({
   status: 'idle',
   messages: [],
   activeNodeId: null,
+  pausedNodeId: null,
   nodeLabels: {},
   currentToolName: null,
   nodeExecutionCounts: {}, 
@@ -36,6 +39,7 @@ export const useRunStore = create<RunState>((set) => ({
   logs: [],
 
   setStatus: (status) => set({ status }),
+  setPaused: (pausedNodeId) => set({ status: pausedNodeId ? 'paused' : 'running', pausedNodeId }),
   
   setActiveNode: (activeNodeId) => set({ activeNodeId }),
   

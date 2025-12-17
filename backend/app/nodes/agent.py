@@ -64,6 +64,12 @@ class GenericAgentNode:
             schema_instruction += "}\nDo not include markdown formatting like ```json. Just raw JSON."
             effective_system_prompt += schema_instruction
 
+        # [CRITICAL Fix for Ollama Regression]
+        # Some local models (Llama 3, Mistral) via Ollama don't natively realize they have tools bound 
+        # unless explicitly told, unlike GPT-4. We inject a hint.
+        if profile.provider == "ollama" and self.config.get('tools'):
+            effective_system_prompt += "\n\nYou have access to tools. Invoke them using the tool calling format if required to answer."
+
         # [FEATURE] Prompt Templating (Smart Input Injection)
         # Allow the system prompt to access state variables using {{ variable_name }} syntax.
         # This mirrors the "Smart Node" capability to pull inputs from the state.

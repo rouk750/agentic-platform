@@ -15,6 +15,13 @@ Payload for `POST /api/flows`.
 Response model.
 *   Inherits `FlowCreate`.
 *   Adds `id`, `created_at`, `updated_at`, `is_archived`.
+*   Note: `FlowVersionRead` also exists for history, including `is_locked`.
+
+### `FlowVersionRead` (`flow_version.py`)
+*   `id`, `flow_id`.
+*   `data` (JSON).
+*   `created_at`.
+*   `is_locked` (bool): Persistence status.
 
 ## 2. Settings Schemas (`settings.py`)
 
@@ -30,6 +37,16 @@ Payload for `POST /api/settings/models`.
 ### `AgentTemplateCreate`
 *   `name`, `description`, `type`.
 *   `config` (str): JSON configuration.
+
+### `AgentTemplateRead`
+*   Inherits Base.
+*   Adds `id`, `is_archived`, timestamps.
+
+### `AgentTemplateVersionRead`
+*   `id`, `template_id`.
+*   `config`.
+*   `version_number`.
+*   `is_locked` (bool).
 
 ## 4. DSPy Interaction (`dspy_schema.py`)
 
