@@ -20,7 +20,9 @@ function useAgentRuntime(): {
 *   **Store Updates**: Heavily couples with `runStore` (updating status, logs, tokens).
     *   `setStatus('connecting' | 'running' | 'paused' | 'done')`
     *   `addLog(...)`
-    *   `setActiveNode(...)`, `setPaused(...)`
+    *   `addActiveNode(...)`, `removeActiveNode(...)` (with persistence delays)
+    *   `addToolExecution(...)`
+    *   `setPaused(...)`
 *   **Toast**: Triggers `sonner` toasts on error.
 
 ## 2. API Resource (`useApiResource.ts`)
