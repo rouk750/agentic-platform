@@ -96,6 +96,8 @@ Handles streaming execution of agents.
     *   `node_finished`: Node output (includes `has_tool_calls` flag).
     *   `tool_start/end`: Tool execution details (includes `node_id` of the caller).
     *   `interrupt`: Sent when execution pauses at a breakpoint (HITL). Payload: `{type: "interrupt", node_id: "..."}`.
+    *   `error`: Sent on runtime exceptions. Payload: `{type: "error", message: "..."}`.
+        *   **Context Errors**: Returns a structured friendly message if context length is exceeded.
 4.  **Control Commands**:
     *   **Resume**: Client sends `{"command": "resume"}` to continue execution from a paused state.
 

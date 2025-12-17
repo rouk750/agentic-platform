@@ -41,9 +41,31 @@ class MCPLangChainTool(BaseTool):
             elif schema_type == "boolean":
                 prop_type = bool
             elif schema_type == "array":
-                prop_type = List[Any]
+                # Try to infer item type from MCP schema if available
+                items_schema = prop_schema.get("items", {})
+                item_type_str = items_schema.get("type")
+                
+                if item_type_str == "string":
+                    prop_type = List[str]
+                elif item_type_str == "integer":
+                    prop_type = List[int]
+                elif item_type_str == "number":
+                    prop_type = List[float]
+                elif item_type_str == "boolean":
+                    prop_type = List[bool]
+                elif item_type_str == "object":
+                    prop_type = List[Dict[str, Any]]
+                else:
+                    # Default fallback: List of strings is safer than List[Any] for many LLMs
+                    # But some might be objects. Let's try List[Dict] if ambiguous?
+                    # Or just List[str] as it handles most "modifiers", "paths".
+                    prop_type = List[Any] 
+
             elif schema_type == "object":
                 prop_type = Dict[str, Any]
+            else:
+                 # Fallback for null or unknown types
+                 prop_type = Any
                 
             default = ... if prop_name in required else None
             # Handle explicit default in schema if present
@@ -51,7 +73,13 @@ class MCPLangChainTool(BaseTool):
                 default = prop_schema["default"]
                 
             fields[prop_name] = (prop_type, Field(default=default, description=prop_schema.get("description")))
-            
+        
+        # [FIX] Handle empty parameter schemas
+        # Many LLMs (Ollama/OpenAI) reject empty properties with 400 Bad Request.
+        if not fields:
+            # Inject a dummy parameter
+            fields["_explanation"] = (Optional[str], Field(default=None, description="Optional explanation for why this tool is being called."))
+        
         args_schema = create_model(f"{name}Schema", **fields)
         
         super().__init__(
@@ -79,7 +107,7 @@ class MCPLangChainTool(BaseTool):
         """
         Async execution of the tool.
         """
-        print(f"DEBUG: Executing MCP Tool {self.server_name}/{self.tool_name} with args: {kwargs}")
+        # print(f"DEBUG: Executing MCP Tool {self.server_name}/{self.tool_name} with args: {kwargs}")
         try:
             result = await self.client_manager.call_tool(
                 self.server_name,
@@ -102,7 +130,13 @@ class MCPLangChainTool(BaseTool):
                 output.append(str(result))
             
             final_output = "\n".join(output)
-            print(f"DEBUG: MCP Tool {self.tool_name} success. Output len: {len(final_output)}")
+            
+            # [SAFETY] Truncate output to prevent Context Window Explosion
+            # 50k characters is roughly 12k tokens. Safe enough for most modern models.
+            MAX_CHARS = 50000 
+            if len(final_output) > MAX_CHARS:
+                final_output = final_output[:MAX_CHARS] + f"\n... [TRUNCATED] Output length {len(final_output)} exceeded {MAX_CHARS} chars."
+                
             return final_output
             
         except Exception as e:

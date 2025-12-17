@@ -8,6 +8,10 @@
     "puppeteer": {
       "command": "node",
       "args": ["/Users/faroukbelhadj/Dev-env/AI/MCP/contrib/puppeteer-mcp-server/dist/index.js"]
-  }
+  },
+  "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"]
+    }
   }
 }

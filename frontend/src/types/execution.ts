@@ -1,5 +1,5 @@
 
-export type MessageType = 'user' | 'ai' | 'tool' | 'trace';
+export type MessageType = 'user' | 'ai' | 'tool' | 'trace' | 'system';
 
 export interface ToolDetails {
     name: string;

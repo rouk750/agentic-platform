@@ -23,6 +23,7 @@ function useAgentRuntime(): {
     *   `addActiveNode(...)`, `removeActiveNode(...)` (with persistence delays)
     *   `addToolExecution(...)`
     *   `setPaused(...)`
+    *   `addMessage({ role: 'system' })` on critical errors (e.g., Prompt too long).
 *   **Toast**: Triggers `sonner` toasts on error.
 
 ## 2. API Resource (`useApiResource.ts`)
