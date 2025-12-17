@@ -24,6 +24,7 @@ Renders a single log entry.
 *   **Dependencies**: `react-markdown`, `react-syntax-highlighter`.
 *   **UI Logic**:
     *   Handles "Tool" and "Trace" roles with collapsible details (`@radix-ui/react-collapsible`).
+    *   **System Alert**: Renders `role: system` as a persistent red alert block for critical errors.
 
 ## 2. Settings (`src/features/settings`)
 

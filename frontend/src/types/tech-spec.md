@@ -19,7 +19,7 @@ The payload for Agent Nodes.
 
 ### `Message`
 The atomic unit of the Chat/Run log.
-*   `role`: 'user' | 'ai' | 'tool' | 'trace'.
+*   `role`: 'user' | 'ai' | 'tool' | 'trace' | 'system'.
 *   `traceDetails`: `{ nodeId, input, count }` (Used for "Trace" debugging messages).
 *   `toolDetails`: `{ name, input, output }`.
 

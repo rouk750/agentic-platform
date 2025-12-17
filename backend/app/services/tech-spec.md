@@ -40,6 +40,10 @@ Manages connections to Model Context Protocol servers.
 
 #### `call_tool(server_name, tool_name, arguments)`
 *   Proxies execution to the remote server.
+*   **Safety**: Truncates output to 50k characters to prevent Context Window Exhaustion.
+*   **Schema**:
+    *   Generates `pydantic` models dynamically.
+    *   Optimizes schemas for Ollama compatibility (dummy args for empty tools, typed arrays).
 
 ## 4. Security (`security.py`)
 System Keyring wrapper.
