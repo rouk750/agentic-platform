@@ -27,6 +27,8 @@ import { SmartNode } from '../nodes/SmartNode';
 import IteratorNode from '../nodes/IteratorNode';
 import { SubgraphNode } from '../nodes/SubgraphNode';
 
+import { cleanNode, cleanEdge } from '../utils/flowUtils';
+
 const nodeTypes = {
     agent: AgentNode,
     router: RouterNode,
@@ -59,17 +61,6 @@ function FlowEditorInstance() {
     useEffect(() => {
         if (!loading && lastSavedData) {
             try {
-                const cleanNode = (node: any) => {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    const { selected, dragging, resizing, positionAbsolute, measured, width, height, ...rest } = node;
-                    return rest;
-                };
-                const cleanEdge = (edge: any) => {
-                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                    const { selected, ...rest } = edge;
-                    return rest;
-                };
-
                 const saved = JSON.parse(lastSavedData);
                 const savedNodes = saved.nodes?.map(cleanNode) || [];
                 const savedEdges = saved.edges?.map(cleanEdge) || [];
@@ -243,7 +234,15 @@ function FlowEditorInstance() {
         setSaving(true);
         try {
             const currentGraph = toObject(); // Gets nodes, edges, viewport
-            const dataString = JSON.stringify(currentGraph);
+
+            // Clean data before saving
+            const cleanGraph = {
+                ...currentGraph,
+                nodes: currentGraph.nodes.map(cleanNode),
+                edges: currentGraph.edges.map(cleanEdge)
+            };
+
+            const dataString = JSON.stringify(cleanGraph);
 
             if (id && id !== 'new') {
                 // Update existing
