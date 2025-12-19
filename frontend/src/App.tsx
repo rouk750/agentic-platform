@@ -1,6 +1,4 @@
-import EditorSidebar from './components/EditorSidebar';
-import FlowEditor from './components/FlowEditor';
-import { ChatPanel } from './features/execution/ChatPanel';
+import EditorPage from './pages/EditorPage';
 import { Toaster } from 'sonner';
 
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -10,21 +8,7 @@ import FlowsPage from './pages/FlowsPage';
 import AgentsPage from './pages/AgentsPage';
 import MainLayout from './components/MainLayout';
 
-function EditorLayout() {
-    return (
-        <div className="flex h-screen w-screen overflow-hidden bg-white text-slate-900">
-            <EditorSidebar />
-            <div className="flex-1 h-full relative overflow-auto">
-                <div className="flex h-full w-full relative">
-                    <div className="flex-1 h-full relative">
-                        <FlowEditor />
-                    </div>
-                    <ChatPanel />
-                </div>
-            </div>
-        </div>
-    );
-}
+
 
 function App() {
     return (
@@ -40,8 +24,8 @@ function App() {
                 </Route>
 
                 {/* Editor Routes (No Main Sidebar) */}
-                <Route path="/editor/new" element={<EditorLayout />} />
-                <Route path="/editor/:id" element={<EditorLayout />} />
+                <Route path="/editor/new" element={<EditorPage />} />
+                <Route path="/editor/:id" element={<EditorPage />} />
             </Routes>
             <Toaster position="top-center" richColors />
         </BrowserRouter>
