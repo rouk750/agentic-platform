@@ -1,4 +1,4 @@
-import { Play, Sparkles, TerminalSquare } from "lucide-react";
+import { Play, Sparkles, TerminalSquare, Square } from "lucide-react";
 import { useIsolatedRuntime } from "../../../hooks/useIsolatedRuntime";
 import { useRunStore } from "../../../store/runStore";
 import { useState } from "react";
@@ -21,7 +21,7 @@ export default function PromptPlayground({ stepId, data }: PlaygroundProps) {
     const systemPrompt = systemMsg ? systemMsg.content : "System prompt not found in trace history.";
 
     const [input, setInput] = useState("");
-    const { runNode, output, status, logs } = useIsolatedRuntime();
+    const { runNode, stop, output, status, logs } = useIsolatedRuntime();
     const { graphDefinition } = useRunStore();
 
     // Fallback: update local input state when derived initialInput changes (only on mount/step change)
@@ -64,7 +64,29 @@ export default function PromptPlayground({ stepId, data }: PlaygroundProps) {
             return;
         }
 
-        runNode(stepId || "unknown", graphDefinition, effectiveInput);
+        // --- ISOLATION LOGIC ---
+        // To run ONLY this node, we treat it as the new Entry Point.
+        // We clone the graph and force 'isStart' on this node.
+        const isolatedGraph = JSON.parse(JSON.stringify(graphDefinition));
+        const targetNodeId = stepId || data?.node_id;
+
+        if (isolatedGraph.nodes) {
+            let found = false;
+            isolatedGraph.nodes = isolatedGraph.nodes.map((node: any) => {
+                if (node.id === targetNodeId) {
+                    found = true;
+                    return { ...node, data: { ...node.data, isStart: true } };
+                }
+                // Remove isStart from all others
+                return { ...node, data: { ...node.data, isStart: false } };
+            });
+
+            if (!found) {
+                console.warn(`Target node ${targetNodeId} not found in graph definition.`);
+            }
+        }
+
+        runNode(targetNodeId || "unknown", isolatedGraph, effectiveInput);
     };
 
     if (!stepId) {
@@ -106,14 +128,26 @@ export default function PromptPlayground({ stepId, data }: PlaygroundProps) {
                 </div>
 
                 <div className="space-y-2">
-                    <button
-                        onClick={handleRun}
-                        disabled={status === 'running'}
-                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
-                    >
-                        {status === 'running' ? <Sparkles className="animate-spin" size={16} /> : <Play size={16} fill="currentColor" />}
-                        {status === 'running' ? 'Running...' : 'Run Isolated Test'}
-                    </button>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleRun}
+                            disabled={status === 'running'}
+                            className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center justify-center gap-2 text-sm font-medium transition-colors shadow-sm disabled:opacity-50"
+                        >
+                            {status === 'running' ? <Sparkles className="animate-spin" size={16} /> : <Play size={16} fill="currentColor" />}
+                            {status === 'running' ? 'Running...' : 'Run Isolated Test'}
+                        </button>
+
+                        {status === 'running' && (
+                            <button
+                                onClick={stop}
+                                className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg flex items-center justify-center transition-colors"
+                                title="Stop Execution"
+                            >
+                                <Square size={16} fill="currentColor" />
+                            </button>
+                        )}
+                    </div>
 
                     {/* Output Area (Console) */}
                     {(output || logs.length > 0) && (

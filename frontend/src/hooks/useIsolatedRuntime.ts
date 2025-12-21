@@ -89,6 +89,14 @@ export function useIsolatedRuntime() {
 
     }, []);
     
+    const stop = useCallback(() => {
+        if (socketRef.current) {
+            socketRef.current.close();
+            socketRef.current = null;
+            setState(s => ({ ...s, status: 'idle', logs: [...s.logs, "Execution stopped by user."] }));
+        }
+    }, []);
+    
     // Cleanup
     useEffect(() => {
         return () => {
@@ -96,5 +104,5 @@ export function useIsolatedRuntime() {
         };
     }, []);
 
-    return { runNode, ...state };
+    return { runNode, stop, ...state };
 }
