@@ -90,11 +90,12 @@ Handles streaming execution of agents.
 **Protocol**:
 1.  **Init**: Recv JSON `{"graph": {...}, "input": "..."}`.
 2.  **Compile**: Calls `app.engine.compiler.compile_graph`.
-3.  **Stream**: Loops `app.astream_events`.
+3.  **Stream**: Loops `app.astream_events` (version="v2").
     *   `token`: LLM partial output.
     *   `node_active`: Logic node start.
-    *   `node_finished`: Node output (includes `has_tool_calls` flag).
+    *   `node_finished`: Node output (includes `has_tool_calls` flag and verification results).
     *   `tool_start/end`: Tool execution details (includes `node_id` of the caller).
+    *   `token_usage`: (New) Sent on `on_chat_model_end`. Payload: `{type: "token_usage", node_id: "...", usage: {input_tokens: N, output_tokens: N, total_tokens: N}}`.
     *   `interrupt`: Sent when execution pauses at a breakpoint (HITL). Payload: `{type: "interrupt", node_id: "..."}`.
     *   `error`: Sent on runtime exceptions. Payload: `{type: "error", message: "..."}`.
         *   **Context Errors**: Returns a structured friendly message if context length is exceeded.

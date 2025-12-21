@@ -28,12 +28,14 @@ Standard ReAct-style agent.
     *   `max_iterations` (int): Loop protection.
     *   `flexible_mode` (bool): If True, requests JSON but allows free-form fields.
 
-#### `__call__(state: GraphState)`
+### `__call__(state: GraphState)`
 *   **Logic**:
     1.  Hydrates LLM from `llm_factory`.
     2.  Binds tools found in `config['tools']` via `tool_registry`.
+        *   **Virtual Tools**: Uses `tool_utils.create_virtual_tool` to bind other agents as tools.
     3.  Injects System Prompt (supports `{{ variable }}` templating from State).
     4.  Invokes LLM.
+    5.  **Output Parsing**: Uses `text_processing.extract_json_from_text` to robustly handle JSON responses (even if wrapped in markdown).
 
     6.  **Anti-Hallucination & Robustness**:
         *   **Context Isolation**: If the agent is invoked as a tool (Sub-Agent), the Orchestrator's noisy history is replaced by a clean `HumanMessage(query)`.
