@@ -9,7 +9,8 @@ import TraceInspector from "./components/TraceInspector";
 import PromptPlayground from "./components/PromptPlayground";
 
 interface StepSnapshot {
-    node_id: string;
+    id: string; // Unique UI ID
+    node_id: string; // Backend Node ID
     state: any;
     created_at: string;
     duration?: number;
@@ -38,8 +39,9 @@ export default function DeepObservabilityPage() {
         const allSnapshots: StepSnapshot[] = [];
 
         Object.entries(nodeSnapshots).forEach(([nodeId, snapshots]) => {
-            snapshots.forEach((snap: any) => {
+            snapshots.forEach((snap: any, index: number) => {
                 allSnapshots.push({
+                    id: `${nodeId}-${snap.created_at || Date.now()}-${index}`, // Unique ID
                     node_id: nodeId,
                     state: snap.state,
                     created_at: snap.created_at || new Date().toISOString(),
@@ -59,7 +61,7 @@ export default function DeepObservabilityPage() {
     }, [nodeSnapshots]);
 
     // Find the selected snapshot data
-    const selectedSnapshot = steps.find(s => s.node_id === selectedStepId) || null; // This logic might be flawed if multiple steps have same node_id. 
+    const selectedSnapshot = steps.find(s => s.id === selectedStepId) || null;
     // Ideally selectedStepId should be 'nodeId-timestamp' or index.
     // For now let's assume unique node execution (which is FALSE for loops).
     // Better: Timeline passes the actual SNAPSHOT object or a unique ID.

@@ -21,14 +21,14 @@ export default function ExecutionTimeline({ steps, selectedId, onSelect }: Timel
                 )}
 
                 {steps.map((step) => {
-                    const isSelected = selectedId === step.node_id;
+                    const isSelected = selectedId === step.id;
                     const date = new Date(step.created_at);
                     const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
                     return (
                         <div
-                            key={step.node_id + step.created_at} // Composite key in case of duplicates
-                            onClick={() => onSelect(step.node_id)}
+                            key={step.id}
+                            onClick={() => onSelect(step.id)}
                             className={`p-3 rounded-lg border cursor-pointer transition-all ${isSelected
                                 ? "bg-blue-50 border-blue-200 ring-1 ring-blue-200"
                                 : "bg-white border-slate-200 hover:border-blue-300"
