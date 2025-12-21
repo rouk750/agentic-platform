@@ -2,17 +2,18 @@ import { useState, useRef, useEffect } from 'react';
 import { useRunStore } from '../../store/runStore';
 import { useAgentRuntime } from '../../hooks/useAgentRuntime';
 import { ChatMessage } from './ChatMessage';
-import { Play, Square, Eraser, Loader2, Eye, EyeOff } from 'lucide-react';
+import { Play, Square, Eraser, Loader2, Eye, EyeOff, Bug } from 'lucide-react';
 import { useGraphStore } from '../../store/graphStore';
 import clsx from 'clsx';
 import { groupMessagesForLayout } from '../../utils/executionUtils';
+import { Link } from 'react-router-dom';
 // Wait, I need to check where useGraphStore is. Assuming standard path.
 
 export function ChatPanel() {
     const [input, setInput] = useState('');
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const { messages, status, clearSession, pausedNodeId, nodeLabels } = useRunStore();
+    const { messages, status, clearSession, pausedNodeId, nodeLabels, runId } = useRunStore();
     const { connect, stop, resume } = useAgentRuntime();
 
     // Actually, useGraphStore likely stores nodes/edges.
@@ -134,6 +135,15 @@ export function ChatPanel() {
                 </div>
 
                 <div className="flex gap-2 shrink-0">
+                    {runId && (
+                        <Link
+                            to={`/debug/${runId}`}
+                            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-500 hover:text-blue-500 transition-colors"
+                            title="Open Deep Observability Console"
+                        >
+                            <Bug size={18} />
+                        </Link>
+                    )}
                     <button
                         onClick={() => setShowTraces(!showTraces)}
                         className={clsx(

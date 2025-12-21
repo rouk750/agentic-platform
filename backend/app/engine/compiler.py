@@ -352,8 +352,7 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
                                     if k.lower() == candidate.lower():
                                         # print(f"DEBUG: Routing via JSON-in-Text fallback (case-insensitive) to {k}")
                                         return v
-                        except Exception:
-                            pass # Not valid JSON or other error, ignore
+
 
                 # Default path
                 return d_targets if d_targets else END
