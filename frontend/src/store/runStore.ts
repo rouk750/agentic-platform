@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Message, LogEntry } from '../types/execution';
+import { findTargetMessageIndex } from '../utils/executionUtils';
 
 interface RunState {
   status: 'idle' | 'connecting' | 'running' | 'paused' | 'error' | 'done';
@@ -24,7 +25,7 @@ interface RunState {
   addToolExecution: (nodeId: string, toolName: string) => void;
   updateIteratorProgress: (nodeId: string, current: number, total: number) => void;
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
-  appendToken: (token: string) => void;
+  appendToken: (token: string, nodeId?: string) => void;
   addLog: (entry: Omit<LogEntry, 'timestamp'>) => void;
   clearSession: () => void;
   reset: () => void;
@@ -97,46 +98,53 @@ export const useRunStore = create<RunState>((set) => ({
     ],
   })),
   
-  appendToken: (token) => set((state) => {
+  appendToken: (token, nodeId) => set((state) => {
     const messages = [...state.messages];
-    const lastMsg = messages[messages.length - 1];
     
-    // Check if the last message is from AI AND matches ONE OF the current active nodes
-    // Ideally we track which node is emitting the token, but usually token events don't carry nodeId. 
-    // Assuming backend sends serialized updates, usually one stream at a time or we just append to last AI msg.
-    // For robust parallel streaming, we'd need nodeId in token event. 
-    // Current logic: if last msg is AI, append.
-    
-    // We relax the nodeId check slightly or rely on the fact that usually only LLMs stream tokens.
-    // However, if two LLMs stream at once, this will interleave. 
-    // Standard solution: token event should have nodeId. 
-    // For now, we'll just check if role is 'ai'.
-    
-    const isAiMsg = lastMsg && lastMsg.role === 'ai';
+    // 1. Try to find an existing message to merge into (Backwards search)
+    const targetIndex = findTargetMessageIndex(messages, nodeId);
 
-    if (isAiMsg) {
-        const updatedMsg = { ...lastMsg, content: lastMsg.content + token };
-        messages[messages.length - 1] = updatedMsg;
+    if (targetIndex !== -1) {
+        // Found a matching message in the current turn
+        const targetMsg = messages[targetIndex];
+        const updatedMsg = { ...targetMsg, content: targetMsg.content + token };
+        messages[targetIndex] = updatedMsg;
         return { messages };
-    } else {
-        // Warning: This might pick a random sender if multiple nodes are active.
-        // We'll trust the single-stream assumption for now or pick the last added node.
-        const lastActiveNode = state.activeNodeIds[state.activeNodeIds.length - 1];
-        const senderName = lastActiveNode ? state.nodeLabels[lastActiveNode] : undefined;
-        return {
-            messages: [
-                ...messages,
-                {
-                    id: crypto.randomUUID(),
-                    role: 'ai',
-                    content: token,
-                    name: senderName,
-                    nodeId: lastActiveNode,
-                    timestamp: Date.now()
-                }
-            ]
-        };
     }
+    
+    // 2. Fallback: If no nodeId or no match found
+    // Check if the VERY LAST message is "appendable" (AI role, no specific ID conflict)
+    // This handles the legacy case or "blind append"
+    const lastMsg = messages[messages.length - 1];
+    const isAiMsg = lastMsg && lastMsg.role === 'ai';
+    
+    // Only append blindly if we have NO nodeId to conflict with
+    const canBlindAppend = isAiMsg && !nodeId && !lastMsg.nodeId; 
+
+    if (canBlindAppend) {
+         const updatedMsg = { ...lastMsg, content: lastMsg.content + token };
+         messages[messages.length - 1] = updatedMsg;
+         return { messages };
+    }
+
+    // 3. Create New Bubble
+    // If we don't have a nodeId, we fall back to the last active one (risky but better than nothing)
+    const effectiveNodeId = nodeId || state.activeNodeIds[state.activeNodeIds.length - 1];
+    const effectiveName = effectiveNodeId ? (state.nodeLabels[effectiveNodeId] || effectiveNodeId) : undefined;
+    
+    return {
+        messages: [
+            ...messages,
+            {
+                id: crypto.randomUUID(),
+                role: 'ai',
+                content: token,
+                name: effectiveName,
+                nodeId: effectiveNodeId,
+                timestamp: Date.now()
+            }
+        ]
+    };
   }),
   
   addLog: (entry) => set((state) => ({

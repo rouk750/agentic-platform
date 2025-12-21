@@ -100,7 +100,23 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
                     if kind == "on_chat_model_stream":
                         content = event["data"]["chunk"].content
                         if content:
-                            await websocket.send_json({"type": "token", "content": content})
+                            # Attempt to find node_id
+                            tags = event.get("tags", [])
+                            node_id = None
+                            for tag in tags:
+                                if tag.startswith("langgraph:node:"):
+                                    node_id = tag.split(":", 2)[2]
+                                    break
+                            
+                            # Fallback to metadata
+                            if not node_id and "metadata" in event and "langgraph_node" in event["metadata"]:
+                                node_id = event["metadata"]["langgraph_node"]
+
+                            await websocket.send_json({
+                                "type": "token", 
+                                "content": content,
+                                "node_id": node_id
+                            })
                             
                     elif kind == "on_chain_start":
                         # Detect if it's a node start

@@ -2,6 +2,7 @@ import json
 from app.engine.state import GraphState
 from app.services.llm_factory import get_llm_profile, create_llm_instance
 from langchain_core.messages import SystemMessage
+from app.utils.text_processing import sanitize_label, render_template
 
 class GenericAgentNode:
     def __init__(self, node_id: str, config: dict):
@@ -49,6 +50,40 @@ class GenericAgentNode:
         # Prepare messages
         invocation_messages = messages
         
+        # [CRITICAL FIX] Context Isolation for Sub-Agents (Agent-as-a-Tool)
+        # If the last message is a Tool Call directed at THIS agent, we must NOT pass the full history.
+        # Why? Because the LLM sees the Orchestrator's "Call tool rzouga" message and gets confused, 
+        # often hallucinating a new tool call to itself instead of answering.
+        # Solution: Extract the 'query' argument and present it as a fresh User Message.
+        
+        last_msg = messages[-1] if messages else None
+        incoming_tool_call_id = None
+        
+        if last_msg and hasattr(last_msg, 'tool_calls') and last_msg.tool_calls:
+            sanitized_self_name = sanitize_label(self.label)
+            
+            for tc in last_msg.tool_calls:
+                tc_name = tc.get('name')
+                # Check if this tool call is for us
+                if tc_name in [self.label, sanitized_self_name, self.node_id]:
+                    incoming_tool_call_id = tc.get('id')
+                    args = tc.get('args', {})
+                    query = args.get('query') or args.get('question') or str(args)
+                    
+                    query = args.get('query') or args.get('question') or str(args)
+                    
+                    # [CONTEXT ISOLATION]
+                    # We extract only the query to prevent the sub-agent from seeing the parent's conversation history.
+                    # This prevents confusion and recursive hallucinations.
+                    # print(f"DEBUG AGENT {self.node_id}: Context Isolation Active. Extracted query: {query}")
+                    
+                    from langchain_core.messages import HumanMessage
+                    
+                    from langchain_core.messages import HumanMessage
+                    # Replace history with just this query
+                    invocation_messages = [HumanMessage(content=query)]
+                    break
+        
         # Handle Output Schema (JSON Mode fallback)
         effective_system_prompt = self.system_prompt
         
@@ -73,29 +108,20 @@ class GenericAgentNode:
         # [FEATURE] Prompt Templating (Smart Input Injection)
         # Allow the system prompt to access state variables using {{ variable_name }} syntax.
         # This mirrors the "Smart Node" capability to pull inputs from the state.
+        # [FEATURE] Prompt Templating (Smart Input Injection)
+        # Allow the system prompt to access state variables using {{ variable_name }} syntax.
+        # This mirrors the "Smart Node" capability to pull inputs from the state.
         if effective_system_prompt:
-            import re
-            
-            # Find all {{ var_name }} patterns
-            pattern = r"\{\{\s*(\w+)\s*\}\}"
-            
-            def replace_match(match):
-                var_name = match.group(1)
-                # Look in state first (Priority 1)
-                if var_name in state:
-                    return str(state[var_name])
-                # Look in context dict (Priority 2 - often used in LangGraph)
-                if "context" in state and isinstance(state["context"], dict) and var_name in state["context"]:
-                    return str(state["context"][var_name])
-                
-                # Warning if not found, or keep original text?
-                # Keeping original text is safer for debugging but might confuse LLM.
-                # Let's replace with a placeholder indicating "MISSING" to help user debug
-                return f"<{var_name} NOT FOUND>"
-
-            effective_system_prompt = re.sub(pattern, replace_match, effective_system_prompt)
-            
-            invocation_messages = [SystemMessage(content=effective_system_prompt)] + messages
+             # Merge state and context for template rendering
+             # Priority: state vars, then context vars
+             template_context = {}
+             if "context" in state and isinstance(state["context"], dict):
+                 template_context.update(state["context"])
+             template_context.update(state)
+             
+             effective_system_prompt = render_template(effective_system_prompt, template_context)
+             
+             invocation_messages = [SystemMessage(content=effective_system_prompt)] + invocation_messages
 
         from app.engine.debug import print_debug
         
@@ -113,6 +139,7 @@ class GenericAgentNode:
         # The frontend sends a list of tool names in config['tools']
         tool_names = self.config.get('tools', [])
         if tool_names:
+             print(f"DEBUG AGENT {self.node_id}: Attempting to bind tools: {tool_names}")
              from app.services.tool_registry import get_tool
              tools_to_bind = []
              for name in tool_names:
@@ -120,9 +147,35 @@ class GenericAgentNode:
                  if tool_instance:
                      tools_to_bind.append(tool_instance)
                  else:
-                     print(f"Warning: Tool {name} not found in registry.")
+                     print(f"Warning: Tool {name} not found in registry. creating virtual tool.")
+                     # ... [Virtual Tool Logic] ...
+                     # [CRITICAL FIX] Virtual Tool Binding for Sub-Agents
+                     # If the tool is not found in the registry, we assume it's another Agent connected in the graph.
+                     # We create a "Virtual Tool" so the LLM has a valid schema to generate a tool_call against.
+                     try:
+                         from langchain_core.tools import StructuredTool
+                         from pydantic import BaseModel, Field
+
+                         # Define a generic input schema for talking to another agent
+                         class AgentInput(BaseModel):
+                             query: str = Field(description="The full message or query to send to the agent.")
+
+                         def call_virtual_agent(query: str):
+                             return f"Routing to agent {name}..."
+
+                         virtual_tool = StructuredTool.from_function(
+                             func=call_virtual_agent,
+                             name=name,
+                             description=f"Send a message or query to the agent named '{name}'. Use this to delegate tasks.",
+                             args_schema=AgentInput
+                         )
+                         tools_to_bind.append(virtual_tool)
+                         print(f"DEBUG: Created Virtual Tool for agent '{name}'")
+                     except Exception as vt_e:
+                         print(f"Error creating virtual tool for {name}: {vt_e}")
              
              if tools_to_bind:
+                 print(f"DEBUG AGENT {self.node_id}: Final tools bound: {[t.name for t in tools_to_bind]}")
                  try:
                      llm = llm.bind_tools(tools_to_bind)
                  except NotImplementedError:
@@ -133,7 +186,68 @@ class GenericAgentNode:
                      # Raising is better to avoid silent failure
                      raise ValueError(f"Failed to bind tools to LLM: {str(e)}")
             
-        response = await llm.ainvoke(invocation_messages)
+        
+        # [FEATURE] Self-Correction Loop for Recursive Hallucinations
+        # Some models (like gpt-oss) will try to call themselves as a tool when asked to perform their expert function.
+        # We need to catch this, tell the model "Stop it", and retry.
+        
+        # [FEATURE] Hallucination Correction Loop
+        # Catch Self-Calls (Recursive) AND Unbound Tools (Hallucinations)
+        
+        current_messages = invocation_messages
+        response = None
+        bound_tool_names = [t.name for t in tools_to_bind] if 'tools_to_bind' in locals() else []
+        
+        # Try up to 3 times (Initial + 2 Retries)
+        for attempt in range(3):
+            response = await llm.ainvoke(current_messages)
+            
+            # Check for Hallucinated Tool Calls
+            if hasattr(response, 'tool_calls') and response.tool_calls:
+                bad_tool_detected = False
+                bad_tool_name = ""
+                sanitized_self_name = sanitize_label(self.label)
+                
+                for tc in response.tool_calls:
+                   tn = tc.get('name')
+                   # Check 1: Self Call
+                   if tn in [self.label, sanitized_self_name, self.node_id]:
+                       bad_tool_detected = True
+                       bad_tool_name = tn
+                   if tn in [self.label, sanitized_self_name, self.node_id]:
+                       bad_tool_detected = True
+                       bad_tool_name = tn
+                       # print(f"DEBUG AGENT {self.node_id}: Detected Self-Call to '{tn}'")
+                       break
+                   # Check 2: Unbound Tool (Hallucination)
+                   if tn not in bound_tool_names:
+                       bad_tool_detected = True
+                       bad_tool_name = tn
+                       # print(f"DEBUG AGENT {self.node_id}: Detected Unbound Tool Call to '{tn}' (Available: {bound_tool_names})")
+                       break
+                
+                if bad_tool_detected:
+                    # [ANTI-HALLUCINATION CONFIG]
+                    # If the agent tries to call itself or a non-existent tool, we intercept it.
+                    # print(f"DEBUG AGENT {self.node_id}: Hallucination detected (Attempt {attempt+1}/3).")
+                    
+                    if attempt == 2:
+                        # Hard Fallback
+                        print(f"DEBUG AGENT {self.node_id}: Max retries reached. Forcing text fallback.")
+                        from langchain_core.messages import AIMessage
+                        fallback_text = f"I am {self.label}. I cannot use the tool '{bad_tool_name}' as requested. Here is my answer based on my knowledge."
+                        response = AIMessage(content=fallback_text)
+                        response.tool_calls = []
+                        break
+                    
+                    # Retry with Error
+                    error_content = f"CRITICAL ERROR: The tool '{bad_tool_name}' is NOT available. You must Answer the user's question DIRECTLY in text. Do not call any tools."
+                    error_msg = SystemMessage(content=error_content)
+                    current_messages = list(current_messages) + [response, error_msg]
+                    continue 
+            
+            break
+
         
         
         # Output Logging
@@ -174,20 +288,46 @@ class GenericAgentNode:
         
         # Tag message with sender Name (Sanitized Label) so Orchestrator recognizes it
         # BUT CRITICAL: If the message has tool_calls, we MUST return it as AIMessage
-        # otherwise the Compiler routing will fail to detect the tool call.
         if hasattr(response, 'tool_calls') and response.tool_calls:
-             # It's a tool call -> Return as is (AIMessage)
-             # We might still want to tag it for logging, but for routing, the type matches.
-             # However, LangGraph expects the sender to be set on the message for state tracking.
-             response.name = self.label # Set name on AIMessage
+             response.name = self.label 
              return {"messages": [response], "context": context_update, "last_sender": self.node_id}
         
-        import re
-        from langchain_core.messages import HumanMessage
-        sanitized_name = re.sub(r'[^a-zA-Z0-9_-]', '_', self.label)
+        # [CRITICAL FIX] Agent-as-a-Tool Polymorphic Return
+        # If this agent was invoked by a Tool Call (from an Orchestrator), we MUST return a ToolMessage.
+        # Otherwise, the Orchestrator will see an AIMessage (Tool Call) followed by a HumanMessage, 
+        # leaving the Tool Call 'unresolved' and confusing the LLM history.
         
-        # Convert to HumanMessage to force Orchestrator to see it as an external result
-        # Add explicit header to help the LLM distinguish it from its own thoughts
+        last_input_message = invocation_messages[-1] if invocation_messages else None
+        is_tool_invocation = False
+        tool_call_id = None
+        
+        sanitized_name = sanitize_label(self.label)
+        
+        if last_input_message and hasattr(last_input_message, 'tool_calls') and last_input_message.tool_calls:
+            # Check if one of the tool calls was for THIS agent
+            for tc in last_input_message.tool_calls:
+                # Check against raw label, sanitized, or ID
+                if tc.get('name') in [self.label, sanitized_name, self.node_id]:
+                    is_tool_invocation = True
+                    tool_call_id = tc.get('id')
+                    # print(f"DEBUG AGENT: Detected Agent '{self.label}' invoked as Tool (ID: {tool_call_id})")
+                    break
+
+        if is_tool_invocation and tool_call_id:
+             from langchain_core.messages import ToolMessage
+             # Return a clean ToolMessage. 
+             # We assume the Agent's output content is the "result" of the tool.
+             # We strip the "### RESULT FROM" header as it's redundant in a ToolMessage.
+             tool_response = ToolMessage(
+                 content=str(response.content),
+                 tool_call_id=tool_call_id,
+                 name=sanitized_name
+             )
+             return {"messages": [tool_response], "context": context_update, "last_sender": self.node_id}
+
+        from langchain_core.messages import HumanMessage
+        
+        # Fallback: Standard Agent-to-Agent conversation (HumanMessage)
         final_content = f"### RESULT FROM {self.label} ###\n{response.content}"
         human_response = HumanMessage(content=final_content, name=sanitized_name)
         

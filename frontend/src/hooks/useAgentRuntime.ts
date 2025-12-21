@@ -48,8 +48,8 @@ export function useAgentRuntime() {
     const startSocket = async () => {
         try {
             let port = 8000;
-            if (window.electronAPI) {
-                port = await window.electronAPI.getApiPort();
+            if ((window as any).electronAPI) {
+                port = await (window as any).electronAPI.getApiPort();
             } else {
                 console.warn("Electron API not found, defaulting to 8000");
             }
@@ -78,7 +78,7 @@ export function useAgentRuntime() {
                     
                     switch (data.type) {
                         case 'token':
-                            appendToken(data.content);
+                            appendToken(data.content, data.node_id);
                             break;
                         case 'node_active':
                             addActiveNode(data.node_id);
