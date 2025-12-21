@@ -50,12 +50,19 @@ function FlowEditorInstance() {
     const [saving, setSaving] = useState(false);
     const [lastSavedData, setLastSavedData] = useState<string | null>(null);
     const [isDirty, setIsDirty] = useState(false);
-    const resetRunState = useRunStore((state) => state.reset);
+    const { reset: resetRunState, activeFlowId, setActiveFlowId } = useRunStore();
 
-    // Reset run state on mount to prevent stale highlights/messages
+    // Reset run state only if we switch to a DIFFERENT flow
     useEffect(() => {
-        resetRunState();
-    }, [resetRunState]);
+        if (id && id !== activeFlowId) {
+            resetRunState();
+            setActiveFlowId(id);
+        } else if (!id) {
+            // If new flow (no ID), maybe reset?
+            // resetRunState(); 
+            // setActiveFlowId('new');
+        }
+    }, [id, resetRunState, activeFlowId, setActiveFlowId]);
 
     // Check for dirty state
     useEffect(() => {

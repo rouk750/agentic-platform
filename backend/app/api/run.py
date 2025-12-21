@@ -101,16 +101,8 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
                         content = event["data"]["chunk"].content
                         if content:
                             # Attempt to find node_id
-                            tags = event.get("tags", [])
-                            node_id = None
-                            for tag in tags:
-                                if tag.startswith("langgraph:node:"):
-                                    node_id = tag.split(":", 2)[2]
-                                    break
-                            
-                            # Fallback to metadata
-                            if not node_id and "metadata" in event and "langgraph_node" in event["metadata"]:
-                                node_id = event["metadata"]["langgraph_node"]
+                            from app.utils.observability_utils import extract_node_id
+                            node_id = extract_node_id(event)
 
                             await websocket.send_json({
                                 "type": "token", 
@@ -118,23 +110,31 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
                                 "node_id": node_id
                             })
                             
+                    elif kind == "on_chat_model_end":
+                         # [FEATURE] Token Tracking
+                         output = event["data"].get("output")
+                         if output and hasattr(output, "usage_metadata") and output.usage_metadata:
+                             usage = output.usage_metadata
+                             
+                             # Find node_id
+                             from app.utils.observability_utils import extract_node_id
+                             node_id = extract_node_id(event)
+                                 
+                             if node_id:
+                                 await websocket.send_json({
+                                     "type": "token_usage",
+                                     "node_id": node_id,
+                                     "usage": usage
+                                 })         
                     elif kind == "on_chain_start":
                         # Detect if it's a node start
                         node_name = event["name"]
                         if node_name and node_name not in ["__start__", "__end__", "LangGraph", "route_tool", "route_iterator"]:
                             node_input = event["data"].get("input") or event["data"]
 
-                            # Ensure serializability
-                            def make_serializable(obj):
-                                if hasattr(obj, "content"): return obj.content
-                                if hasattr(obj, "dict"): return obj.dict()
-                                try:
-                                    json.dumps(obj)
-                                    return obj
-                                except (TypeError, OverflowError):
-                                    return str(obj)
-
+                            from app.utils.observability_utils import make_serializable
                             safe_input = make_serializable(node_input)
+                            
                             if isinstance(safe_input, dict):
                                  try:
                                      json.dumps(safe_input)
@@ -165,31 +165,52 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
                              msgs = output["messages"]
                              if msgs and hasattr(msgs[-1], "tool_calls") and msgs[-1].tool_calls:
                                  has_tool_calls = True
-                             
+                         
                          safe_data["has_tool_calls"] = has_tool_calls
+ 
+                         # [FEATURE] Deep Observability Snapshot
+                         # Fetch the full state after this node's execution
+                         timestamp = None # Add timestamp if possible
+                         snapshot_payload = None
+                         
+                         # Identify if this is a significant node (not LangGraph internals)
+                         if event["name"] and event["name"] not in ["__start__", "__end__", "LangGraph", "route_tool", "route_iterator"]:
+                             try:
+                                 # Fetch the latest state from the checkpointer
+                                 state_snapshot = await app.aget_state(config)
+                                 if state_snapshot:
+                                     # Serialize the state
+                                     # Messages need specific handling to be JSON serializable
+                                     from langchain_core.messages import messages_to_dict
+                                     
+                                     current_values = state_snapshot.values
+                                     serialized_state = {}
+                                     
+                                     if "messages" in current_values:
+                                         serialized_state["messages"] = messages_to_dict(current_values["messages"])
+                                     
+                                     if "context" in current_values:
+                                         serialized_state["context"] = current_values["context"]
+
+                                     snapshot_payload = {
+                                         "node_id": event["name"],
+                                         "state": serialized_state,
+                                         "created_at": state_snapshot.created_at if hasattr(state_snapshot, "created_at") else None,
+                                         "config": state_snapshot.config
+                                     }
+                             except Exception as exc:
+                                 print(f"Error fetching snapshot for {event['name']}: {exc}")
 
                          await websocket.send_json({
                              "type": "node_finished", 
                              "node_id": event["name"],
-                             "data": safe_data
+                             "data": safe_data,
+                             "snapshot": snapshot_payload # Piggyback on node_finished
                          })
 
                     elif kind == "on_tool_start":
-                        # Attempt to find the node that triggered this tool
-                        tags = event.get("tags", [])
-                        node_id = None
-                        
-                        # Debugging: Print tags to see what we get
-                        print(f"DEBUG TOOL START TAGS: {tags} NAME: {event['name']}")
-
-                        for tag in tags:
-                            if tag.startswith("langgraph:node:"):
-                                node_id = tag.split(":", 2)[2]
-                                break
-                        
-                        # Fallback: Check metadata if present
-                        if not node_id and "metadata" in event and "langgraph_node" in event["metadata"]:
-                             node_id = event["metadata"]["langgraph_node"]
+                        from app.utils.observability_utils import extract_node_id
+                        node_id = extract_node_id(event)
 
                         await websocket.send_json({
                             "type": "tool_start", 
@@ -199,16 +220,8 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
                         })
 
                     elif kind == "on_tool_end":
-                        tags = event.get("tags", [])
-                        node_id = None
-                        
-                        for tag in tags:
-                            if tag.startswith("langgraph:node:"):
-                                node_id = tag.split(":", 2)[2]
-                                break
-                                
-                        if not node_id and "metadata" in event and "langgraph_node" in event["metadata"]:
-                             node_id = event["metadata"]["langgraph_node"]
+                        from app.utils.observability_utils import extract_node_id
+                        node_id = extract_node_id(event)
 
                         await websocket.send_json({
                             "type": "tool_end", 

@@ -153,22 +153,8 @@ class GenericAgentNode:
                      # If the tool is not found in the registry, we assume it's another Agent connected in the graph.
                      # We create a "Virtual Tool" so the LLM has a valid schema to generate a tool_call against.
                      try:
-                         from langchain_core.tools import StructuredTool
-                         from pydantic import BaseModel, Field
-
-                         # Define a generic input schema for talking to another agent
-                         class AgentInput(BaseModel):
-                             query: str = Field(description="The full message or query to send to the agent.")
-
-                         def call_virtual_agent(query: str):
-                             return f"Routing to agent {name}..."
-
-                         virtual_tool = StructuredTool.from_function(
-                             func=call_virtual_agent,
-                             name=name,
-                             description=f"Send a message or query to the agent named '{name}'. Use this to delegate tasks.",
-                             args_schema=AgentInput
-                         )
+                         from app.utils.tool_utils import create_virtual_tool
+                         virtual_tool = create_virtual_tool(name)
                          tools_to_bind.append(virtual_tool)
                          print(f"DEBUG: Created Virtual Tool for agent '{name}'")
                      except Exception as vt_e:
@@ -262,29 +248,18 @@ class GenericAgentNode:
         # Parse JSON if schema is requested OR flexible mode is active
         if (self.output_schema or self.flexible_mode) and response.content:
             content_str = str(response.content) # Initialize content_str
-            try:
-                import re
-                # Robust extraction: Look for the first valid JSON block {...}
-                json_match = re.search(r"(\{.*\})", content_str, re.DOTALL)
-                if json_match:
-                    content_str = json_match.group(1)
-                else:
-                    # Fallback cleanup
-                    content_str = content_str.strip()
-                    if content_str.startswith("```json"):
-                        content_str = content_str[7:]
-                    if content_str.endswith("```"):
-                        content_str = content_str[:-3]
-                
-                parsed_json = json.loads(content_str)
+            content_str = str(response.content) # Initialize content_str
+            from app.utils.text_processing import extract_json_from_text
+            
+            parsed_json = extract_json_from_text(content_str)
+            if parsed_json:
                 context_update = parsed_json
-                
-                # Critical Clean Up: Update the message content with the cleaned JSON
-                # so downstream nodes (SmartNode) don't get the dirty XML tags.
-                response.content = content_str
-                
-            except (json.JSONDecodeError, AttributeError):
-                print(f"Failed to parse JSON output from node {self.node_id}. Content was: {content_str}")
+                # Updating response content might be tricky if we want to keep original text vs clean JSON
+                # But previous logic did update it. Let's keep it consistent if extract_json works.
+                # Actually extract_json returns Dict, not string.
+                response.content = json.dumps(parsed_json) 
+            else:
+                 print(f"Failed to parse JSON output from node {self.node_id}. Content was: {content_str}")
         
         # Tag message with sender Name (Sanitized Label) so Orchestrator recognizes it
         # BUT CRITICAL: If the message has tool_calls, we MUST return it as AIMessage

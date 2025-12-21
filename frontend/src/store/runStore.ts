@@ -3,6 +3,8 @@ import type { Message, LogEntry } from '../types/execution';
 import { findTargetMessageIndex } from '../utils/executionUtils';
 
 interface RunState {
+  runId: string | null;
+  activeFlowId: string | null;
   status: 'idle' | 'connecting' | 'running' | 'paused' | 'error' | 'done';
   messages: Message[];
   activeNodeIds: string[];
@@ -12,9 +14,16 @@ interface RunState {
   iteratorProgress: Record<string, { current: number; total: number }>;
   nodeExecutionCounts: Record<string, number>;
   toolStats: Record<string, Record<string, number>>; // nodeId -> toolName -> count
+  tokenUsage: Record<string, { input: number; output: number; total: number }>;
+  tokenUsage: Record<string, { input: number; output: number; total: number }>;
+  pendingStepTokens: Record<string, { input: number; output: number; total: number }>; // Transient for current step
+  nodeSnapshots: Record<string, any[]>; // nodeId -> list of snapshots
+  graphDefinition: any | null; // For debug/replay
   logs: LogEntry[];
   
   // Actions
+  setRunId: (id: string | null) => void;
+  setActiveFlowId: (id: string | null) => void;
   setStatus: (status: RunState['status']) => void;
   setPaused: (nodeId: string | null) => void;
   addActiveNode: (nodeId: string) => void;
@@ -23,15 +32,21 @@ interface RunState {
   setCurrentTool: (toolName: string | null) => void;
   incrementNodeExecution: (nodeId: string) => void;
   addToolExecution: (nodeId: string, toolName: string) => void;
+  addTokenUsage: (nodeId: string, usage: { input_tokens: number; output_tokens: number; total_tokens: number }) => void;
   updateIteratorProgress: (nodeId: string, current: number, total: number) => void;
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
   appendToken: (token: string, nodeId?: string) => void;
   addLog: (entry: Omit<LogEntry, 'timestamp'>) => void;
+  addSnapshot: (nodeId: string, snapshot: any) => void;
+  setGraphDefinition: (graph: any) => void;
+  clearSnapshots: () => void;
   clearSession: () => void;
   reset: () => void;
 }
 
 export const useRunStore = create<RunState>((set) => ({
+  runId: null,
+  activeFlowId: null,
   status: 'idle',
   messages: [],
   activeNodeIds: [],
@@ -40,9 +55,17 @@ export const useRunStore = create<RunState>((set) => ({
   currentToolName: null,
   nodeExecutionCounts: {}, 
   toolStats: {},
+  tokenUsage: {},
+  pendingStepTokens: {},
+  nodeSnapshots: {},
+  graphDefinition: null,
   iteratorProgress: {},
   logs: [],
+  
+  setGraphDefinition: (graph) => set({ graphDefinition: graph }),
 
+  setRunId: (runId) => set({ runId }),
+  setActiveFlowId: (activeFlowId) => set({ activeFlowId }),
   setStatus: (status) => set({ status }),
   setPaused: (pausedNodeId) => set({ status: pausedNodeId ? 'paused' : 'running', pausedNodeId }),
   
@@ -54,6 +77,29 @@ export const useRunStore = create<RunState>((set) => ({
   removeActiveNode: (nodeId) => set((state) => ({
     activeNodeIds: state.activeNodeIds.filter(id => id !== nodeId)
   })),
+
+  addTokenUsage: (nodeId, usage) => set((state) => {
+    // 1. Accumulate Global Total
+    const currentGlobal = state.tokenUsage[nodeId] || { input: 0, output: 0, total: 0 };
+    const newGlobal = {
+        input: currentGlobal.input + (usage.input_tokens || 0),
+        output: currentGlobal.output + (usage.output_tokens || 0),
+        total: currentGlobal.total + (usage.total_tokens || 0)
+    };
+
+    // 2. Accumulate Pending Step Total (since last snapshot)
+    const currentPending = state.pendingStepTokens[nodeId] || { input: 0, output: 0, total: 0 };
+    const newPending = {
+        input: currentPending.input + (usage.input_tokens || 0),
+        output: currentPending.output + (usage.output_tokens || 0),
+        total: currentPending.total + (usage.total_tokens || 0)
+    };
+
+    return {
+      tokenUsage: { ...state.tokenUsage, [nodeId]: newGlobal },
+      pendingStepTokens: { ...state.pendingStepTokens, [nodeId]: newPending }
+    };
+  }),
   
   setNodeLabels: (nodeLabels) => set({ nodeLabels }),
 
@@ -150,13 +196,46 @@ export const useRunStore = create<RunState>((set) => ({
   addLog: (entry) => set((state) => ({
     logs: [...state.logs, { ...entry, timestamp: Date.now() }]
   })),
+
+  addSnapshot: (nodeId, snapshot) => set((state) => {
+    // Consume pending tokens for this step
+    const stepTokens = state.pendingStepTokens[nodeId];
+    
+    // Enrich snapshot with metadata
+    const enrichedSnapshot = {
+        ...snapshot,
+        _meta: {
+            tokens: stepTokens,
+            timestamp: Date.now()
+        }
+    };
+
+    // Clear pending tokens for this node
+    const { [nodeId]: _, ...remainingPending } = state.pendingStepTokens;
+
+    return {
+        nodeSnapshots: {
+            ...state.nodeSnapshots,
+            [nodeId]: [...(state.nodeSnapshots[nodeId] || []), enrichedSnapshot]
+        },
+        pendingStepTokens: remainingPending,
+        logs: [...state.logs, { level: 'info', message: `Snapshot captured for ${nodeId}`, nodeId, timestamp: Date.now(), data: enrichedSnapshot }]
+    };
+  }),
   
+  clearSnapshots: () => set({ nodeSnapshots: {} }),
+
   clearSession: () => set({
     status: 'idle',
     messages: [],
     activeNodeIds: [],
     nodeExecutionCounts: {},
     toolStats: {},
+    tokenUsage: {},
+    tokenUsage: {},
+    pendingStepTokens: {},
+    nodeSnapshots: {}, // Clear debug data too
+    graphDefinition: null,
     logs: []
   }),
 
