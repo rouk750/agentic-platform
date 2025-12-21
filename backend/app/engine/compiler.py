@@ -8,6 +8,7 @@ from app.engine.router import make_router
 from app.nodes.agent import GenericAgentNode
 from app.nodes.tool_node import ToolNode
 from app.nodes.iterator_node import IteratorNode
+from app.utils.text_processing import sanitize_label, extract_json_from_text
 
 def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpointSaver] = None, subgraph_loader: Optional[Callable[[str], Dict[str, Any]]] = None, recursion_depth: int = 0, visited_flow_ids: set = None) -> Any:
     """
@@ -32,11 +33,28 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
     nodes = graph_data.get('nodes', [])
     edges = graph_data.get('edges', [])
     
+    # [FIX] Pre-process edges to find Implicit Tool Connections (Agent -> Agent via tool-call)
+    # The source agent needs to know about the target agent names to bind them as tools.
+    extra_tools_map = {} # source_id -> set(tool_names)
+    
+    for edge in edges:
+        if edge.get('sourceHandle') == 'tool-call':
+            source = edge['source']
+            target = edge['target']
+            
+            # Find target node label/id
+            target_node = next((n for n in nodes if n['id'] == target), None)
+            if target_node:
+                tool_name = target_node.get('data', {}).get('label') or target # Priority to Label
+                if tool_name:
+                    # Sanitize same way as route_tool
+                    sanitized_name = sanitize_label(tool_name)
+                    if source not in extra_tools_map:
+                        extra_tools_map[source] = set()
+                    extra_tools_map[source].add(sanitized_name)
+
     # 1. Add Nodes
     # We first register all nodes.
-    # We might need to handle "tools" specifically if they are a separate node type in UI
-    # or just a configuration on the agent. 
-    # For this Epic, we assume nodes in JSON map to registered classes.
     
     node_ids = set()
     interrupt_nodes = []
@@ -46,6 +64,17 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
         node_id = node['id']
         node_type = node['type']
         node_data = node.get('data', {})
+        
+        # [FIX] Inject discovered tools from edges into config
+        if node_id in extra_tools_map:
+            # Note: GenericAgentNode reads 'tools' from the top-level config dict (node_data)
+            if 'tools' not in node_data: node_data['tools'] = []
+            
+            # Add unique
+            for t_name in extra_tools_map[node_id]:
+                if t_name not in node_data['tools']:
+                    print(f"DEBUG COMPILER: Auto-injecting tool '{t_name}' into agent '{node_id}' config")
+                    node_data['tools'].append(t_name)
         
         node_ids.add(node_id)
         if node_data.get('require_approval', False):
@@ -206,27 +235,133 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
         # (Only applies if source is NOT explicitly a router node, though agents act as routers here)
         
 
-        tool_call_target = None
+        tool_call_targets = {} # Map tool_name -> target_node_id
         default_targets_for_tool = []
         
         has_tool_handle = False
+        import re 
+        
         for t in targets:
             if t['handle'] == 'tool-call':
                 has_tool_handle = True
-                tool_call_target = t['target']
+                t_id = t['target']
+                t_node = node_map.get(t_id)
+                
+                # Heuristics to find the "Tool Name" of the target node
+                # Priority 1: The Node Label (sanitized) because usually users name agents "Agent Proba"
+                # Priority 2: The Node ID (fallback)
+                potential_names = []
+                if t_node:
+                    label = t_node.get('data', {}).get('label')
+                    if label:
+                        potential_names.append(label) # Raw label
+                        potential_names.append(sanitize_label(label)) # Sanitized
+                        potential_names.append(sanitize_label(label).lower()) # Lowercase sanitized
+                    
+                    potential_names.append(t_id) # ID
+                
+                # Register this target for all potential names
+                for name in potential_names:
+                     tool_call_targets[name] = t_id
+                     
+                # Fallback: if we only have one target, we might want to track it as 'default' tool target?
+                # But let's rely on explicit names for now.
+                
             elif not t['handle'] or t['handle'] == 'default' or t['handle'] == 'output':
                 # [FIX] Support fan-out: Collect ALL default targets
                 default_targets_for_tool.append(t['target'])
         
         if has_tool_handle:
-            def route_tool(state, config=None, t_target=tool_call_target, d_targets=default_targets_for_tool):
+            def route_tool(state, config=None, t_targets=tool_call_targets, d_targets=default_targets_for_tool):
                 messages = state.get('messages', [])
+                # print(f"DEBUG ROUTER: Checking route for message: {messages[-1] if messages else 'None'}")
+                # print(f"DEBUG ROUTER: Available tool targets: {list(t_targets.keys())}")
+                
                 if messages and hasattr(messages[-1], 'tool_calls') and messages[-1].tool_calls:
-                    return t_target
-                # [FIX] Return LIST of targets for parallel execution
+                    # [FIX] Support Parallel Tool Calls
+                    # Iterate over ALL tool calls and collect unique targets
+                    destinations = []
+                    
+                    for tc in messages[-1].tool_calls:
+                        tc_name = tc.get('name')
+                        target_id = None
+                        
+                        # Try to find target
+                        if tc_name in t_targets:
+                            target_id = t_targets[tc_name]
+                        else:
+                            # Try case-insensitive lookup
+                            for k, v in t_targets.items():
+                                if k.lower() == tc_name.lower():
+                                    target_id = v
+                                    break
+                        
+                        if target_id:
+                            # print(f"DEBUG ROUTER: Resolved '{tc_name}' -> {target_id}")
+                            if target_id not in destinations:
+                                destinations.append(target_id)
+                        else:
+                             # print(f"DEBUG ROUTER: Could not resolve target for tool '{tc_name}' among {list(t_targets.keys())}")
+                             pass
+
+                    if destinations:
+                        # [PARALLEL ROUTING]
+                        # If multiple tool calls are detected, we return a LIST of node IDs.
+                        # LangGraph interprets a list return value as a "Fan-Out" Instruction,
+                        # triggering all targeted nodes in parallel.
+                        # print(f"DEBUG ROUTER: Routing to PARALLEL targets: {destinations}")
+                        return destinations 
+                        
+                    # If we found tool calls but no targets matched? 
+                    # Use fallback strategies or Ambiguity check
+                    
+                    # If we have tool calls but matched nothing...
+                    # Try single-target ambiguity fallback (for the first one maybe?)
+                    unique_targets = list(set(t_targets.values()))
+                    if len(unique_targets) == 1:
+                         # print(f"DEBUG ROUTER: Fallback to unique target {unique_targets[0]}")
+                         return unique_targets[0]
+                         
+                    # Fail to default if ambiguous
+
+                
+                # [fallback] Check for JSON-in-Text (Hallucinated Tool Calls)
+                # Some models (like smaller/older open weights) output JSON text instead of native tool_calls.
+                last_msg = messages[-1]
+                if hasattr(last_msg, 'content') and isinstance(last_msg.content, str):
+                    data = extract_json_from_text(last_msg.content.strip())
+                    
+                    if data:
+                         candidates = []
+                         if isinstance(data, dict):
+                            for key in ['tool', 'agent', 'name']:
+                                if key in data and isinstance(data[key], str):
+                                    candidates.append(data[key])
+                            # Also check all values just in case
+                            for val in data.values():
+                                if isinstance(val, str):
+                                    candidates.append(val)
+                        
+                         for candidate in candidates:
+                                # Direct match
+                                if candidate in t_targets:
+                                    # print(f"DEBUG: Routing via JSON-in-Text fallback to {candidate}")
+                                    return t_targets[candidate]
+                                # Lowercase match
+                                for k, v in t_targets.items():
+                                    if k.lower() == candidate.lower():
+                                        # print(f"DEBUG: Routing via JSON-in-Text fallback (case-insensitive) to {k}")
+                                        return v
+                        except Exception:
+                            pass # Not valid JSON or other error, ignore
+
+                # Default path
                 return d_targets if d_targets else END
 
-            path_map = {tool_call_target: tool_call_target}
+            path_map = {}
+            for tid in tool_call_targets.values():
+                path_map[tid] = tid
+                
             if default_targets_for_tool:
                 for dt in default_targets_for_tool:
                     path_map[dt] = dt
@@ -263,8 +398,7 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
             workflow.add_conditional_edges(source_id, router_fn, path_map)
             continue
         
-            workflow.add_conditional_edges(source_id, router_fn, path_map)
-            continue
+
         
         # --- 3. Iterator Node Logic (Next vs Complete) ---
         if source_node_type == 'iterator':

@@ -16,7 +16,10 @@ Compiles a React Flow JSON graph into a LangGraph `StateGraph`.
 2.  **Configuration Injection**: Passes `node['data']` to the node constructor.
 3.  **Adjacency Map**: Builds a map of `source -> targets` to handle branching.
 4.  **Edge Processing**:
-    *   **Tool Routing**: If an edge has handle `tool-call`, adds a conditional edge using `route_tool`.
+    *   **Tool Routing (`route_tool`)**:
+        *   **Multi-Target Support**: Iterates over ALL `tool_calls` in the last message.
+        *   **Parallel Execution**: If multiple calls target different agents, returns a list of Node IDs, triggering LangGraph's parallel fan-out.
+        *   **Implicit Binding**: populates `extra_tools_map` to ensure source agents bind to target agents (virtual tools) even if not explicitly configured.
     *   **Router Nodes**: If source is 'router', calls `make_router` logic.
     *   **Iterators**: Wiring up `NEXT` and `COMPLETE` handles.
     *   **Standard**: Simple `workflow.add_edge`.

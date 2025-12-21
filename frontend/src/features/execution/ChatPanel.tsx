@@ -5,6 +5,7 @@ import { ChatMessage } from './ChatMessage';
 import { Play, Square, Eraser, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useGraphStore } from '../../store/graphStore';
 import clsx from 'clsx';
+import { groupMessagesForLayout } from '../../utils/executionUtils';
 // Wait, I need to check where useGraphStore is. Assuming standard path.
 
 export function ChatPanel() {
@@ -31,6 +32,7 @@ export function ChatPanel() {
         if (!input.trim() && messages.length === 0) return;
 
         if (status === 'running') {
+            console.log("Stopping execution...");
             stop();
             return;
         }
@@ -112,14 +114,20 @@ export function ChatPanel() {
                     <h2 className="font-semibold text-zinc-800 dark:text-zinc-200 shrink-0">Execution</h2>
 
                     {/* Active Node Indicator in Header */}
-                    {status === 'running' && useRunStore.getState().activeNodeId && (
+                    {status === 'running' && useRunStore.getState().activeNodeIds.length > 0 && (
                         <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 dark:bg-blue-900/40 rounded-full border border-blue-100 dark:border-blue-800/50 min-w-0 animate-in fade-in zoom-in duration-200">
                             <Loader2 size={12} className="animate-spin text-blue-600 dark:text-blue-400 shrink-0" />
                             <span className="text-[10px] font-medium text-blue-700 dark:text-blue-300 truncate max-w-[150px]">
-                                {useRunStore.getState().nodeLabels[useRunStore.getState().activeNodeId!] || useRunStore.getState().activeNodeId}
+                                {(() => {
+                                    const lastActiveId = useRunStore.getState().activeNodeIds.slice(-1)[0];
+                                    return useRunStore.getState().nodeLabels[lastActiveId] || lastActiveId;
+                                })()}
                             </span>
                             <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 border-l border-blue-200 dark:border-blue-700 pl-2 shrink-0">
-                                #{useRunStore.getState().nodeExecutionCounts[useRunStore.getState().activeNodeId!] || 1}
+                                #{(() => {
+                                    const lastActiveId = useRunStore.getState().activeNodeIds.slice(-1)[0];
+                                    return useRunStore.getState().nodeExecutionCounts[lastActiveId] || 1;
+                                })()}
                             </span>
                         </div>
                     )}
@@ -156,11 +164,48 @@ export function ChatPanel() {
                     </div>
                 )}
 
-                {messages
-                    .filter(msg => showTraces || msg.role !== 'trace')
-                    .map((msg) => (
-                        <ChatMessage key={msg.id} message={msg} />
-                    ))}
+                {/* Hybrid Layout Rendering */}
+                {(() => {
+                    const layoutBlocks = groupMessagesForLayout(messages);
+
+                    return layoutBlocks.map((block, blockIdx) => {
+                        if (block.type === 'linear') {
+                            return (
+                                <div key={`block-${blockIdx}`} className="flex flex-col gap-4">
+                                    {block.messages
+                                        .filter(msg => showTraces || msg.role !== 'trace')
+                                        .map((msg) => (
+                                            <ChatMessage key={msg.id} message={msg} />
+                                        ))}
+                                </div>
+                            );
+                        } else {
+                            // Parallel Block
+                            const groups = block.groups;
+                            const nodeIds = Object.keys(groups);
+
+                            return (
+                                <div key={`block-${blockIdx}`} className="flex flex-row gap-4 border-l-4 border-blue-100 dark:border-blue-900/30 pl-2 my-2 bg-blue-50/10 dark:bg-blue-900/5 rounded-r-lg p-2 overflow-x-auto">
+                                    {nodeIds.map((nodeId) => (
+                                        <div key={nodeId} className="flex-1 min-w-[250px] flex flex-col border-r border-zinc-200 dark:border-zinc-800 last:border-0 pr-2">
+                                            <div className="mb-2 text-xs font-bold text-zinc-500 uppercase tracking-wider text-center border-b border-zinc-200 dark:border-zinc-800 pb-1 truncate" title={nodeId}>
+                                                {useRunStore.getState().nodeLabels[nodeId] || nodeId || "Agent"}
+                                            </div>
+                                            <div className="flex-1 space-y-4">
+                                                {groups[nodeId]
+                                                    .filter(msg => showTraces || msg.role !== 'trace')
+                                                    .map(msg => (
+                                                        <ChatMessage key={msg.id} message={msg} />
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            );
+                        }
+                    });
+                })()}
+
                 {status === 'connecting' && (
                     <div className="flex items-center gap-2 text-zinc-500 text-sm animate-pulse">
                         <Loader2 size={14} className="animate-spin" /> Connecting...

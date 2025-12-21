@@ -34,9 +34,12 @@ Standard ReAct-style agent.
     2.  Binds tools found in `config['tools']` via `tool_registry`.
     3.  Injects System Prompt (supports `{{ variable }}` templating from State).
     4.  Invokes LLM.
-    5.  **Output Processing**:
-        *   If `tool_calls` exist: Returns `AIMessage` (triggers routing).
-        *   Otherwise: Returns `HumanMessage` decorated with `### RESULT FROM {Label}` to separate it from internal thought chains.
+
+    6.  **Anti-Hallucination & Robustness**:
+        *   **Context Isolation**: If the agent is invoked as a tool (Sub-Agent), the Orchestrator's noisy history is replaced by a clean `HumanMessage(query)`.
+        *   **Recursion Detection**: If the model tries to call *itself* as a tool, the call is intercepted, and a `SystemMessage` correction is injected to force a text response.
+        *   **Hard Fallback**: After 3 failed attempts (persistent hallucination), forces a text response and clears invalid tool calls.
+        *   **Polymorphic Return**: Returns `ToolMessage` if acting as a tool, `HumanMessage` if acting as a main agent.
 
 ## 3. Tool Node (`tool_node.py`)
 
