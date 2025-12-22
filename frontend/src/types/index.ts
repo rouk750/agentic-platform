@@ -13,12 +13,7 @@ export type {
   AgentTemplateUpdate,
   AgentTemplateVersion,
 } from './template';
-export type {
-  LLMProfile,
-  LLMProfileCreate,
-  LLMProfileUpdate,
-  LLMProvider,
-} from './settings';
+export type { LLMProfile, LLMProfileCreate, LLMProfileUpdate, LLMProvider } from './settings';
 
 // Node data types
 export type { AgentNodeData, SchemaField } from './agent';

@@ -1,13 +1,17 @@
 /**
  * Centralized API Client
- * 
+ *
  * Provides a unified axios instance with:
  * - Dynamic base URL (Electron support)
  * - JSON:API content type negotiation
  * - Centralized error handling
  */
 
-import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios';
+import axios, {
+  type AxiosInstance,
+  type AxiosResponse,
+  type InternalAxiosRequestConfig,
+} from 'axios';
 import { logError } from './errorHandler';
 import { deserializeOne, deserializeMany } from './jsonapi/deserializer';
 import type { JSONAPISingleDocument, JSONAPICollectionDocument } from './jsonapi/types';
@@ -79,7 +83,9 @@ export function transformSingleResponse<TAttributes, TDomain extends { id: numbe
   response: AxiosResponse
 ): TDomain {
   if (USE_JSON_API) {
-    return deserializeOne<TAttributes, TDomain>(response.data as JSONAPISingleDocument<TAttributes>);
+    return deserializeOne<TAttributes, TDomain>(
+      response.data as JSONAPISingleDocument<TAttributes>
+    );
   }
   // Legacy format - data is already the domain object
   return response.data as TDomain;

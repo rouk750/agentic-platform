@@ -3,12 +3,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { 
-  deserializeOne, 
-  deserializeMany, 
-  isJsonApiError, 
-  extractErrorMessages 
-} from "../../../src/api/jsonapi/deserializer";
+import {
+  deserializeOne,
+  deserializeMany,
+  isJsonApiError,
+  extractErrorMessages,
+} from '../../../src/api/jsonapi/deserializer';
 import type { JSONAPISingleDocument, JSONAPICollectionDocument } from './types';
 
 describe('deserializeOne', () => {
@@ -24,7 +24,10 @@ describe('deserializeOne', () => {
       },
     };
 
-    const result = deserializeOne<typeof document.data.attributes, { id: number; name: string; value: number }>(document);
+    const result = deserializeOne<
+      typeof document.data.attributes,
+      { id: number; name: string; value: number }
+    >(document);
 
     expect(result.id).toBe(123);
     expect(result.name).toBe('Test Item');
@@ -46,7 +49,10 @@ describe('deserializeMany', () => {
       },
     };
 
-    const result = deserializeMany<typeof document.data[0]['attributes'], { id: number; name: string }>(document);
+    const result = deserializeMany<
+      (typeof document.data)[0]['attributes'],
+      { id: number; name: string }
+    >(document);
 
     expect(result.items).toHaveLength(2);
     expect(result.items[0].id).toBe(1);
@@ -60,7 +66,10 @@ describe('deserializeMany', () => {
       data: [{ type: 'items', id: '1', attributes: { name: 'Item 1' } }],
     };
 
-    const result = deserializeMany<typeof document.data[0]['attributes'], { id: number; name: string }>(document);
+    const result = deserializeMany<
+      (typeof document.data)[0]['attributes'],
+      { id: number; name: string }
+    >(document);
 
     expect(result.meta.total).toBe(1);
   });
@@ -89,8 +98,18 @@ describe('extractErrorMessages', () => {
   it('should extract detail messages', () => {
     const errorResponse = {
       errors: [
-        { status: '400', code: 'VALIDATION', title: 'Validation Error', detail: 'Name is required' },
-        { status: '400', code: 'VALIDATION', title: 'Validation Error', detail: 'Email is invalid' },
+        {
+          status: '400',
+          code: 'VALIDATION',
+          title: 'Validation Error',
+          detail: 'Name is required',
+        },
+        {
+          status: '400',
+          code: 'VALIDATION',
+          title: 'Validation Error',
+          detail: 'Email is invalid',
+        },
       ],
     };
 

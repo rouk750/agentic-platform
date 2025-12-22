@@ -9,28 +9,28 @@ import DeepObservabilityPage from './features/observability/DeepObservabilityPag
 import { RuntimeProvider } from './context/RuntimeContext';
 
 function App() {
-    return (
-        <RuntimeProvider>
-            <BrowserRouter>
-                <Routes>
-                    {/* Main App Layout Routes */}
-                    <Route element={<MainLayout />}>
-                        <Route path="/" element={<Navigate to="/flows" replace />} />
-                        <Route path="/flows" element={<FlowsPage />} />
-                        <Route path="/agents" element={<AgentsPage />} />
-                        <Route path="/settings" element={<Navigate to="/settings/models" replace />} />
-                        <Route path="/settings/:section" element={<SettingsPage />} />
-                    </Route>
+  return (
+    <RuntimeProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* Main App Layout Routes */}
+          <Route element={<MainLayout />}>
+            <Route path="/" element={<Navigate to="/flows" replace />} />
+            <Route path="/flows" element={<FlowsPage />} />
+            <Route path="/agents" element={<AgentsPage />} />
+            <Route path="/settings" element={<Navigate to="/settings/models" replace />} />
+            <Route path="/settings/:section" element={<SettingsPage />} />
+          </Route>
 
-                    {/* Editor Routes (No Main Sidebar) */}
-                    <Route path="/editor/new" element={<EditorPage />} />
-                    <Route path="/editor/:id" element={<EditorPage />} />
-                    <Route path="/debug/:runId" element={<DeepObservabilityPage />} />
-                </Routes>
-                <Toaster position="top-center" richColors />
-            </BrowserRouter>
-        </RuntimeProvider>
-    );
+          {/* Editor Routes (No Main Sidebar) */}
+          <Route path="/editor/new" element={<EditorPage />} />
+          <Route path="/editor/:id" element={<EditorPage />} />
+          <Route path="/debug/:runId" element={<DeepObservabilityPage />} />
+        </Routes>
+        <Toaster position="top-center" richColors />
+      </BrowserRouter>
+    </RuntimeProvider>
+  );
 }
 
 export default App;

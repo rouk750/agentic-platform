@@ -1,14 +1,10 @@
 /**
  * JSON:API Deserializer
- * 
+ *
  * Transforms JSON:API responses to domain objects.
  */
 
-import type {
-  JSONAPISingleDocument,
-  JSONAPICollectionDocument,
-  JSONAPIMeta,
-} from './types';
+import type { JSONAPISingleDocument, JSONAPICollectionDocument, JSONAPIMeta } from './types';
 
 /**
  * Extract domain object from JSON:API single resource document.
@@ -58,7 +54,9 @@ export function isJsonApiError(data: unknown): boolean {
 /**
  * Extract error messages from JSON:API error response.
  */
-export function extractErrorMessages(data: { errors: Array<{ detail?: string; title: string }> }): string {
+export function extractErrorMessages(data: {
+  errors: Array<{ detail?: string; title: string }>;
+}): string {
   return data.errors
     .map((e) => e.detail || e.title)
     .filter(Boolean)

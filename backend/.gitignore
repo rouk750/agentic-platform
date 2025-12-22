@@ -10,3 +10,5 @@ database.db
 checkpoints.sqlite
 checkpoints.sqlite-shm
 checkpoints.sqlite-wal
+database.db-shm
+database.db-wal

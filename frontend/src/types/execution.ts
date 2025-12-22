@@ -1,16 +1,15 @@
-
 export type MessageType = 'user' | 'ai' | 'tool' | 'trace' | 'system';
 
 export interface ToolDetails {
-    name: string;
-    input: string;
-    output?: string;
+  name: string;
+  input: string;
+  output?: string;
 }
 
 export interface TraceDetails {
-    nodeId: string;
-    input: string;
-    count: number;
+  nodeId: string;
+  input: string;
+  count: number;
 }
 
 export interface Message {
@@ -22,6 +21,7 @@ export interface Message {
   timestamp: number;
   toolDetails?: ToolDetails;
   traceDetails?: TraceDetails;
+  isComplete?: boolean;
 }
 
 export interface LogEntry {

@@ -1,6 +1,6 @@
 /**
  * JSON:API Module
- * 
+ *
  * Utilities for working with JSON:API format.
  */
 

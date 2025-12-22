@@ -1,6 +1,5 @@
-
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderHook, waitFor } from '@testing-library/react';
+import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import { useApiResource } from '../../src/hooks/useApiResource';
 
@@ -16,11 +15,6 @@ vi.mock('sonner', () => ({
 vi.mock('../../src/api/errorHandler', () => ({
   parseApiError: vi.fn((err: Error) => err.message),
 }));
-
-interface TestItem {
-  id: number;
-  name: string;
-}
 
 describe('useApiResource', () => {
   const mockApi = {
@@ -89,7 +83,7 @@ describe('useApiResource', () => {
     it('should update item successfully', async () => {
       const initialItem = { id: 1, name: 'Old Name' };
       const updatedItem = { id: 1, name: 'New Name' };
-      
+
       mockApi.getAll.mockResolvedValue([initialItem]);
       mockApi.update.mockResolvedValue(updatedItem);
 

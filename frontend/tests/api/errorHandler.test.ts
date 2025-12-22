@@ -1,10 +1,9 @@
-
 /**
  * Tests for error handler utility
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { parseApiError, handleAsync } from "../../src/api/errorHandler";
+import { parseApiError, handleAsync } from '../../src/api/errorHandler';
 import type { AxiosError } from 'axios';
 
 // Mock axios
@@ -23,11 +22,7 @@ vi.mock('axios', async () => {
   };
 });
 
-function createAxiosError(
-  status: number,
-  data?: unknown,
-  code?: string
-): AxiosError {
+function createAxiosError(status: number, data?: unknown, code?: string): AxiosError {
   const error = new Error('Request failed') as AxiosError;
   error.isAxiosError = true;
   error.config = { url: '/test', method: 'get' } as AxiosError['config'];
@@ -48,7 +43,12 @@ describe('parseApiError', () => {
   it('should parse JSON:API error format', () => {
     const error = createAxiosError(400, {
       errors: [
-        { status: '400', code: 'VALIDATION', title: 'Validation Error', detail: 'Name is required' },
+        {
+          status: '400',
+          code: 'VALIDATION',
+          title: 'Validation Error',
+          detail: 'Name is required',
+        },
       ],
     });
 

@@ -1,6 +1,6 @@
 /**
  * JSON:API Types
- * 
+ *
  * TypeScript interfaces for JSON:API specification.
  * Reference: https://jsonapi.org/format/
  */
