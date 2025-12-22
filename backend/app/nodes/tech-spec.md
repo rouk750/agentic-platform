@@ -42,6 +42,7 @@ Standard ReAct-style agent.
         *   **Recursion Detection**: If the model tries to call *itself* as a tool, the call is intercepted, and a `SystemMessage` correction is injected to force a text response.
         *   **Hard Fallback**: After 3 failed attempts (persistent hallucination), forces a text response and clears invalid tool calls.
         *   **Polymorphic Return**: Returns `ToolMessage` if acting as a tool, `HumanMessage` if acting as a main agent.
+        *   **Ollama Compatibility**: Uses `ollama_utils.adjust_messages_for_ollama` to convert Base64 `ToolMessage`s into Multimodal `HumanMessage`s (Visual Tokens) to fix context limits.
 
 ## 3. Tool Node (`tool_node.py`)
 

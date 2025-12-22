@@ -91,6 +91,7 @@ Handles streaming execution of agents.
 1.  **Init**: Recv JSON `{"graph": {...}, "input": "..."}`.
 2.  **Compile**: Calls `app.engine.compiler.compile_graph`.
 3.  **Stream**: Loops `app.astream_events` (version="v2").
+    *   **Recursion Limit**: Configurable via `LANGGRAPH_RECURSION_LIMIT` (default 50).
     *   `token`: LLM partial output.
     *   `node_active`: Logic node start.
     *   `node_finished`: Node output (includes `has_tool_calls` flag and verification results).

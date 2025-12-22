@@ -270,23 +270,27 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
             elif not t['handle'] or t['handle'] == 'default' or t['handle'] == 'output':
                 # [FIX] Support fan-out: Collect ALL default targets
                 default_targets_for_tool.append(t['target'])
-        
+
+        # Identify "Generic Tool Node" targets (type='tool') to act as catch-all
+        catch_all_tool_nodes = []
+        for t in targets:
+             if t['handle'] == 'tool-call':
+                 t_node = node_map.get(t['target'])
+                 if t_node and t_node.get('type') == 'tool':
+                     catch_all_tool_nodes.append(t['target'])
+                     
         if has_tool_handle:
-            def route_tool(state, config=None, t_targets=tool_call_targets, d_targets=default_targets_for_tool):
+            def route_tool(state, config=None, t_targets=tool_call_targets, d_targets=default_targets_for_tool, catch_all=catch_all_tool_nodes):
                 messages = state.get('messages', [])
-                # print(f"DEBUG ROUTER: Checking route for message: {messages[-1] if messages else 'None'}")
-                # print(f"DEBUG ROUTER: Available tool targets: {list(t_targets.keys())}")
                 
                 if messages and hasattr(messages[-1], 'tool_calls') and messages[-1].tool_calls:
-                    # [FIX] Support Parallel Tool Calls
-                    # Iterate over ALL tool calls and collect unique targets
                     destinations = []
                     
                     for tc in messages[-1].tool_calls:
                         tc_name = tc.get('name')
                         target_id = None
                         
-                        # Try to find target
+                        # 1. Try Specific Match (Sub-Agents / Named Nodes)
                         if tc_name in t_targets:
                             target_id = t_targets[tc_name]
                         else:
@@ -296,20 +300,19 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
                                     target_id = v
                                     break
                         
+                        # 2. Fallback: If not found, check for catch-all ToolNodes
+                        # This handles standard tools (read_image, etc.) that don't match a Node Label
+                        if not target_id and catch_all:
+                             # We assume the first ToolNode is the main executor 
+                             # (Complex flows with multiple ToolNodes for different tools are rare/unsupported by this heuristic yet)
+                             target_id = catch_all[0]
+                             # print(f"DEBUG ROUTER: Routing standard tool '{tc_name}' to Catch-All ToolNode {target_id}")
+
                         if target_id:
-                            # print(f"DEBUG ROUTER: Resolved '{tc_name}' -> {target_id}")
                             if target_id not in destinations:
                                 destinations.append(target_id)
-                        else:
-                             # print(f"DEBUG ROUTER: Could not resolve target for tool '{tc_name}' among {list(t_targets.keys())}")
-                             pass
 
                     if destinations:
-                        # [PARALLEL ROUTING]
-                        # If multiple tool calls are detected, we return a LIST of node IDs.
-                        # LangGraph interprets a list return value as a "Fan-Out" Instruction,
-                        # triggering all targeted nodes in parallel.
-                        # print(f"DEBUG ROUTER: Routing to PARALLEL targets: {destinations}")
                         return destinations 
                         
                     # If we found tool calls but no targets matched? 

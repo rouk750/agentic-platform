@@ -19,6 +19,9 @@ Compiles a React Flow JSON graph into a LangGraph `StateGraph`.
     *   **Tool Routing (`route_tool`)**:
         *   **Multi-Target Support**: Iterates over ALL `tool_calls` in the last message.
         *   **Parallel Execution**: If multiple calls target different agents, returns a list of Node IDs, triggering LangGraph's parallel fan-out.
+        *   **Hybrid Routing (Fix)**:
+            *   Routes explicitly named tool calls to Sub-Agents (Virtual Tools).
+            *   **Fallback**: Routes unmatched tool calls (like `read_image`) to the generic `ToolNode` if available.
         *   **Implicit Binding**: populates `extra_tools_map` to ensure source agents bind to target agents (virtual tools) even if not explicitly configured.
     *   **Router Nodes**: If source is 'router', calls `make_router` logic.
     *   **Iterators**: Wiring up `NEXT` and `COMPLETE` handles.

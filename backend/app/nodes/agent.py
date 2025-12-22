@@ -186,7 +186,16 @@ class GenericAgentNode:
         
         # Try up to 3 times (Initial + 2 Retries)
         for attempt in range(3):
-            response = await llm.ainvoke(current_messages)
+            # [CRITICAL OLLAMA FIX]
+            # Ollama/LangChain integration often fails to parse "ToolMessage" with "image_url" correctly.
+            # It treats the base64 string as text, exploding the context.
+            # We must convert these into HumanMessages for the vision encoder to trigger.
+            if profile.provider == "ollama":
+                from app.utils.ollama_utils import adjust_messages_for_ollama
+                adjusted_messages = adjust_messages_for_ollama(current_messages)
+                response = await llm.ainvoke(adjusted_messages)
+            else:
+                response = await llm.ainvoke(current_messages)
             
             # Check for Hallucinated Tool Calls
             if hasattr(response, 'tool_calls') and response.tool_calls:
@@ -290,14 +299,31 @@ class GenericAgentNode:
 
         if is_tool_invocation and tool_call_id:
              from langchain_core.messages import ToolMessage
-             # Return a clean ToolMessage. 
-             # We assume the Agent's output content is the "result" of the tool.
-             # We strip the "### RESULT FROM" header as it's redundant in a ToolMessage.
-             tool_response = ToolMessage(
-                 content=str(response.content),
-                 tool_call_id=tool_call_id,
-                 name=sanitized_name
-             )
+             
+             # [CRITICAL FIX] Vision Support
+             # If the tool output is a Base64 Image Data URI, we must format it as a Multi-Modal message.
+             # Otherwise, LLMs treat it as a massive text string and try to "read" the base64 characters.
+             content_payload = str(response.content)
+             
+             if content_payload.strip().startswith("data:image/"):
+                 # Format as Multi-Modal Content for Vision Models
+                 # LangChain/Ollama expects: [{"type": "text", ...}, {"type": "image_url", ...}]
+                 tool_response = ToolMessage(
+                     content=[
+                         {"type": "text", "text": "Image successfully loaded:"},
+                         {"type": "image_url", "image_url": {"url": content_payload}}
+                     ],
+                     tool_call_id=tool_call_id,
+                     name=sanitized_name
+                 )
+             else:
+                 # Standard Text Content
+                 tool_response = ToolMessage(
+                     content=content_payload,
+                     tool_call_id=tool_call_id,
+                     name=sanitized_name
+                 )
+                 
              return {"messages": [tool_response], "context": context_update, "last_sender": self.node_id}
 
         from langchain_core.messages import HumanMessage
