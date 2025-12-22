@@ -150,10 +150,13 @@ def extract_pdf_content(file_path: str, strategy: str = "auto", pages: str = Non
                             crop_img = pil_image
                             chunk_suffix = ""
 
-                        # Save
-                        filename = f"{os.path.basename(file_path)}_{p_idx}{chunk_suffix}.png"
+                        # Save (Optimized as JPEG 95 to match image_reader.py and save tokens)
+                        filename = f"{os.path.basename(file_path)}_{p_idx}{chunk_suffix}.jpg"
                         img_path = os.path.join(storage_dir, filename)
-                        crop_img.save(img_path, "PNG")
+                        # Handle RGBA before saving as JPEG
+                        if crop_img.mode in ("RGBA", "P"):
+                            crop_img = crop_img.convert("RGB")
+                        crop_img.save(img_path, "JPEG", quality=95)
 
                         # Output Generation
                         if strategy == "vision_llm":
@@ -168,7 +171,8 @@ def extract_pdf_content(file_path: str, strategy: str = "auto", pages: str = Non
                             if image_output_mode == "base64":
                                 with open(img_path, "rb") as image_file:
                                     encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-                                item["image_base64"] = encoded_string
+                                # [MATCHING FORMAT] Return Data URI exactly like image_reader.py
+                                item["image_base64"] = f"data:image/jpeg;base64,{encoded_string}"
                             else:
                                 item["image_path"] = img_path
                             

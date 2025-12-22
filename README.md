@@ -38,9 +38,14 @@ The backend handles the agent orchestration and AI logic.
     The API will run at `http://localhost:8000`.
 
 4.  **Run Tests**:
-    ```bash
     poetry run pytest
     ```
+
+    **Configuration**:
+    *   `LANGGRAPH_RECURSION_LIMIT`: Set max steps for agent loops (default: 50).
+        ```bash
+        LANGGRAPH_RECURSION_LIMIT=100 poetry run start
+        ```
 
 ### Frontend (Electron/React)
 
@@ -141,3 +146,16 @@ agentic-platform/
 │   ├── package.json        # Node Dependencies
 │   └── vite.config.ts      # Vite Config
 ```
+
+## 6. Feature Highlights
+
+### 👁️ Vision & Multimodal Agents
+The platform now supports full vision capabilities for local models (Ollama):
+*   **Image Reader**: Reads local images, resizes to HD (1920px), and optimizes as JPEG (Quality 95%) to save tokens.
+*   **PDF Analysis**: `extract_pdf_content` tool converts PDF pages to images for Vision models.
+*   **Ollama Compatibility**: Automatically converts Base64 `ToolMessage` outputs into proper Multimodal messages to trigger Ollama's Vision Encoder and prevent context explosion.
+
+### 🧠 Hybrid Routing
+Support for complex agent architectures:
+*   Mix **Standard Tools** (like `read_image`) and **Sub-Agents** (Virtual Tools) in the same graph.
+*   The compiler automatically routes named calls to Sub-Agents and falls back to the generic Tool Executor for standard tools.

@@ -2,6 +2,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from typing import Dict, Any
 import json
 import logging
+import os
 
 from app.engine.compiler import compile_graph
 from app.engine.storage import get_graph_checkpointer
@@ -94,6 +95,9 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
             current_inputs = inputs
 
             while True:
+                # Update recursion limit dynamically
+                config["recursion_limit"] = int(os.getenv("LANGGRAPH_RECURSION_LIMIT", "50"))
+                
                 async for event in app.astream_events(current_inputs, config=config, version="v2"):
                     kind = event["event"]
                     

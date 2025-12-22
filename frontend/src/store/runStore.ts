@@ -15,7 +15,6 @@ interface RunState {
   nodeExecutionCounts: Record<string, number>;
   toolStats: Record<string, Record<string, number>>; // nodeId -> toolName -> count
   tokenUsage: Record<string, { input: number; output: number; total: number }>;
-  tokenUsage: Record<string, { input: number; output: number; total: number }>;
   pendingStepTokens: Record<string, { input: number; output: number; total: number }>; // Transient for current step
   nodeSnapshots: Record<string, any[]>; // nodeId -> list of snapshots
   graphDefinition: any | null; // For debug/replay
@@ -231,7 +230,6 @@ export const useRunStore = create<RunState>((set) => ({
     activeNodeIds: [],
     nodeExecutionCounts: {},
     toolStats: {},
-    tokenUsage: {},
     tokenUsage: {},
     pendingStepTokens: {},
     nodeSnapshots: {}, // Clear debug data too

@@ -33,7 +33,10 @@ Helpers for string manipulation and LLM output parsing.
 ## 3. Tool Utilities (`tool_utils.py`)
 Helpers for tool creation and management.
 
-### `create_virtual_tool(name: str) -> StructuredTool`
-*   **Purpose**: Creates a "Virtual Tool" that represents another Agent in the graph.
-*   **Usage**: Used by `agent.py` when an agent is configured to call another agent (Sub-Agent pattern).
-*   **Schema**: Generic `AgentInput(query: str)`.
+### `tool_utils.py`
+*   `create_virtual_tool(name: str) -> StructuredTool`: Dynamically creates a LangChain tool allowing agents to call other agents.
+
+### `ollama_utils.py`
+*   `adjust_messages_for_ollama(messages: List[BaseMessage]) -> List[BaseMessage]`: 
+    *   **Purpose**: Fixes Context Limit Explosion on Ollama.
+    *   **Logic**: Detects `ToolMessage`s containing Base64 images (string or list) and converts them to `HumanMessage`s to force the Vision Encoder to trigger.
