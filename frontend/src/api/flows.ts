@@ -1,15 +1,8 @@
 import axios from 'axios';
+import type { Flow, FlowVersion } from '../types/flow';
 
-// Define Flow Type
-export interface Flow {
-    id?: number;
-    name: string;
-    description?: string;
-    is_archived?: boolean;
-    data: string; // JSON string
-    created_at?: string;
-    updated_at?: string;
-}
+// Re-export types for backward compatibility
+export type { Flow, FlowVersion } from '../types/flow';
 
 const getBaseUrl = async () => {
     if ((window as any).electronAPI) {

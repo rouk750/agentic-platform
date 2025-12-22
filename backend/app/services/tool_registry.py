@@ -9,6 +9,9 @@ from langchain_core.tools import StructuredTool
 
 from app.services.mcp_client import MCPClientManager
 from app.services.mcp_wrapper import MCPLangChainTool
+from app.logging import get_logger
+
+logger = get_logger(__name__)
 
 # We will store tools here
 # Map: tool_name -> tool_instance
@@ -22,10 +25,6 @@ async def load_tools():
     global _TOOL_REGISTRY, _MCP_MANAGER
     
     # 1. Load Local Tools
-    # (Clear only if re-loading completely, but for now we can clear)
-    # _TOOL_REGISTRY.clear() # Be careful not to wipe during partial reloads if any
-    
-    # Path to tools_library
     package_name = "app.tools_library"
     import app.tools_library
     package_path = os.path.dirname(app.tools_library.__file__)
@@ -40,14 +39,13 @@ async def load_tools():
                         instance = obj()
                         _TOOL_REGISTRY[instance.name] = instance
                     except Exception as e:
-                       print(f"Skipping class tool {name}: {e}")
+                       logger.debug("skipping_class_tool", tool_name=name, error=str(e))
 
                 if isinstance(obj, StructuredTool):
                     _TOOL_REGISTRY[obj.name] = obj
         except Exception as e:
-            print(f"Error loading module {full_module_name}: {e}")
+            logger.error("module_load_failed", module=full_module_name, error=str(e))
 
-    # 2. Load MCP Tools
     # 2. Load MCP Tools
     try:
         if _MCP_MANAGER is None:
@@ -64,12 +62,12 @@ async def load_tools():
                 )
                 _TOOL_REGISTRY[wrapper.name] = wrapper
             except Exception as e:
-                print(f"Failed to wrap MCP tool {tool_data.get('name')}: {e}")
+                logger.error("mcp_tool_wrap_failed", tool_name=tool_data.get('name'), error=str(e))
     except Exception as e:
-        print(f"Warning: Failed to initialize/load MCP tools: {e}")
+        logger.warning("mcp_initialization_failed", error=str(e))
         # Continue so local tools are still available
 
-    print(f"Loaded tools: {list(_TOOL_REGISTRY.keys())}")
+    logger.info("tools_loaded", count=len(_TOOL_REGISTRY), tools=list(_TOOL_REGISTRY.keys()))
 
 
 async def cleanup_tools():
@@ -84,7 +82,7 @@ async def list_tools_metadata() -> List[Dict[str, str]]:
     result = []
     for name, tool in _TOOL_REGISTRY.items():
         result.append({
-            "id": name, # using name as ID for simplicity
+            "id": name,
             "name": name,
             "description": tool.description,
             "type": "tool"
@@ -95,3 +93,4 @@ async def get_tool(tool_id: str) -> BaseTool | None:
     if not _TOOL_REGISTRY:
         await load_tools()
     return _TOOL_REGISTRY.get(tool_id)
+

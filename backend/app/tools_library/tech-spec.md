@@ -51,7 +51,4 @@ Reads a local image and converts it to Base64 Data URI.
 *   **Optimization**: Resizes to max 1920px and converts to JPEG (Quality 95) to prevent Context Limit explosion (Ollama compatible).
 *   **Output**: `data:image/jpeg;base64,...` string.
 
-## 3. Testing
 
-### `fake_tool() -> str`
-Returns a static string "iit s a big fake" for testing tool binding paths.

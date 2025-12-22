@@ -3,6 +3,10 @@ from app.engine.state import GraphState
 from app.services.llm_factory import get_llm_profile, create_llm_instance
 from langchain_core.messages import SystemMessage
 from app.utils.text_processing import sanitize_label, render_template
+from app.logging import get_logger
+from app.exceptions import NodeExecutionError, MaxIterationsError
+
+logger = get_logger(__name__)
 
 class GenericAgentNode:
     def __init__(self, node_id: str, config: dict):
@@ -139,7 +143,7 @@ class GenericAgentNode:
         # The frontend sends a list of tool names in config['tools']
         tool_names = self.config.get('tools', [])
         if tool_names:
-             print(f"DEBUG AGENT {self.node_id}: Attempting to bind tools: {tool_names}")
+             logger.debug("binding_tools", node_id=self.node_id, tools=tool_names)
              from app.services.tool_registry import get_tool
              tools_to_bind = []
              for name in tool_names:
@@ -147,7 +151,7 @@ class GenericAgentNode:
                  if tool_instance:
                      tools_to_bind.append(tool_instance)
                  else:
-                     print(f"Warning: Tool {name} not found in registry. creating virtual tool.")
+                     logger.debug("tool_not_found_creating_virtual", tool_name=name)
                      # ... [Virtual Tool Logic] ...
                      # [CRITICAL FIX] Virtual Tool Binding for Sub-Agents
                      # If the tool is not found in the registry, we assume it's another Agent connected in the graph.
@@ -156,18 +160,18 @@ class GenericAgentNode:
                          from app.utils.tool_utils import create_virtual_tool
                          virtual_tool = create_virtual_tool(name)
                          tools_to_bind.append(virtual_tool)
-                         print(f"DEBUG: Created Virtual Tool for agent '{name}'")
+                         logger.debug("virtual_tool_created", tool_name=name)
                      except Exception as vt_e:
-                         print(f"Error creating virtual tool for {name}: {vt_e}")
+                         logger.error("virtual_tool_creation_failed", tool_name=name, error=str(vt_e))
              
              if tools_to_bind:
-                 print(f"DEBUG AGENT {self.node_id}: Final tools bound: {[t.name for t in tools_to_bind]}")
+                 logger.debug("tools_bound", node_id=self.node_id, tools=[t.name for t in tools_to_bind])
                  try:
                      llm = llm.bind_tools(tools_to_bind)
                  except NotImplementedError:
                      raise ValueError(f"The selected provider ({profile.provider}) or library version does not support tool calling (bind_tools). Please install 'langchain-ollama' or use a different provider.")
                  except Exception as e:
-                     print(f"Error binding tools: {e}")
+                     logger.error("tool_binding_failed", node_id=self.node_id, error=str(e))
                      # Continue without tools? or raise?
                      # Raising is better to avoid silent failure
                      raise ValueError(f"Failed to bind tools to LLM: {str(e)}")
@@ -228,7 +232,7 @@ class GenericAgentNode:
                     
                     if attempt == 2:
                         # Hard Fallback
-                        print(f"DEBUG AGENT {self.node_id}: Max retries reached. Forcing text fallback.")
+                        logger.warning("max_retries_reached", node_id=self.node_id, bad_tool=bad_tool_name)
                         from langchain_core.messages import AIMessage
                         fallback_text = f"I am {self.label}. I cannot use the tool '{bad_tool_name}' as requested. Here is my answer based on my knowledge."
                         response = AIMessage(content=fallback_text)
@@ -268,7 +272,7 @@ class GenericAgentNode:
                 # Actually extract_json returns Dict, not string.
                 response.content = json.dumps(parsed_json) 
             else:
-                 print(f"Failed to parse JSON output from node {self.node_id}. Content was: {content_str}")
+                 logger.warning("json_parse_failed", node_id=self.node_id, content_preview=content_str[:200] if content_str else None)
         
         # Tag message with sender Name (Sanitized Label) so Orchestrator recognizes it
         # BUT CRITICAL: If the message has tool_calls, we MUST return it as AIMessage

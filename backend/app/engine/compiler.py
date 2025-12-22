@@ -9,6 +9,10 @@ from app.nodes.agent import GenericAgentNode
 from app.nodes.tool_node import ToolNode
 from app.nodes.iterator_node import IteratorNode
 from app.utils.text_processing import sanitize_label, extract_json_from_text
+from app.logging import get_logger
+from app.exceptions import GraphCompilationError, MaxRecursionDepthError, CyclicDependencyError
+
+logger = get_logger(__name__)
 
 def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpointSaver] = None, subgraph_loader: Optional[Callable[[str], Dict[str, Any]]] = None, recursion_depth: int = 0, visited_flow_ids: set = None) -> Any:
     """
@@ -22,7 +26,7 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
         visited_flow_ids: Set of Flow IDs continuously visited in this branch to detect cycles.
     """
     if recursion_depth > 5:
-        raise ValueError("Max recursion depth reached for subgraphs (5). Check for cyclic dependencies.")
+        raise MaxRecursionDepthError(max_depth=5)
 
     if visited_flow_ids is None:
         visited_flow_ids = set()
@@ -32,6 +36,9 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
     
     nodes = graph_data.get('nodes', [])
     edges = graph_data.get('edges', [])
+    
+    # [OPTIMIZATION] Create a lookup for node data to access configuration O(1)
+    node_map = {n['id']: n for n in nodes}
     
     # [FIX] Pre-process edges to find Implicit Tool Connections (Agent -> Agent via tool-call)
     # The source agent needs to know about the target agent names to bind them as tools.
@@ -43,7 +50,7 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
             target = edge['target']
             
             # Find target node label/id
-            target_node = next((n for n in nodes if n['id'] == target), None)
+            target_node = node_map.get(target)
             if target_node:
                 tool_name = target_node.get('data', {}).get('label') or target # Priority to Label
                 if tool_name:
@@ -73,7 +80,7 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
             # Add unique
             for t_name in extra_tools_map[node_id]:
                 if t_name not in node_data['tools']:
-                    print(f"DEBUG COMPILER: Auto-injecting tool '{t_name}' into agent '{node_id}' config")
+                    logger.debug("auto_injecting_tool", tool_name=t_name, agent_id=node_id)
                     node_data['tools'].append(t_name)
         
         node_ids.add(node_id)
@@ -139,11 +146,10 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
                 executable = node_class(node_id, node_data)
                 workflow.add_node(node_id, executable)
             except Exception as e:
-                print(f"Error instantiating node {node_id} ({node_type}): {e}")
-                # Potentially raise or skip
-                raise e
+                logger.error("node_instantiation_failed", node_id=node_id, node_type=node_type, error=str(e))
+                raise GraphCompilationError(f"Failed to instantiate node: {e}", node_id=node_id, node_type=node_type, cause=e)
         else:
-             print(f"Warning: Unknown node type {node_type} for node {node_id}")
+             logger.warning("unknown_node_type", node_id=node_id, node_type=node_type)
     
     # 2. Add Edges
     # We need to group edges by source to detect conditional branching.
@@ -170,13 +176,12 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
     
     start_edge_found = False
     
-    # Create a lookup for node data to access configuration
-    node_map = {n['id']: n for n in nodes}
+
 
     # 0. Explicit Configuration Check
     for node in nodes:
         if node.get('data', {}).get('isStart', False):
-             print(f"DEBUG_COMPILER: Found explicit start node: {node['id']}")
+             logger.debug("explicit_start_node_found", node_id=node['id'])
              workflow.add_edge(START, node['id'])
              start_edge_found = True
              # We assume only one start node for now, or multiple are allowed fan-out
@@ -441,12 +446,12 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
                 # Avoid duplicates if multiple handles point to to duplicate nodes (rare but possible)
                 # But LangGraph add_edge is idempotent usually, or we trust the set.
                 if final_target != END and final_target not in node_ids:
-                     print(f"Warning: Edge target {final_target} not found in node registry. Skipping.")
+                     logger.warning("edge_target_not_found", target=final_target, source=source_id)
                      continue
                      
                 try:
                     workflow.add_edge(source_id, final_target)
                 except Exception as e:
-                     print(f"Error adding edge {source_id} -> {final_target}: {e}")
+                     logger.error("edge_addition_failed", source=source_id, target=final_target, error=str(e))
         
     return workflow.compile(checkpointer=checkpointer, interrupt_before=interrupt_nodes)

@@ -3,6 +3,7 @@ from typing import Dict, Any
 import json
 import logging
 import os
+import asyncio
 
 from app.engine.compiler import compile_graph
 from app.engine.storage import get_graph_checkpointer
@@ -53,7 +54,7 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
              # Load from DB if not in payload
              # usage: sync_subgraph_loader serves as a generic loader too
              try:
-                 graph_data = sync_subgraph_loader(graph_id)
+                 graph_data = await asyncio.to_thread(sync_subgraph_loader, graph_id)
              except Exception as e:
                  print(f"Failed to load graph {graph_id}: {e}")
         
@@ -66,7 +67,8 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
         cm = await get_graph_checkpointer()
         async with cm as checkpointer:
             # Compile with Subgraph Support
-            app = compile_graph(
+            app = await asyncio.to_thread(
+                compile_graph,
                 graph_data, 
                 checkpointer=checkpointer,
                 subgraph_loader=sync_subgraph_loader

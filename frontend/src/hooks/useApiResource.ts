@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { toast } from 'sonner';
+import { parseApiError } from '../api/errorHandler';
 
 interface ApiResourceOptions<T, TCreate, TUpdate> {
     api: {
@@ -63,7 +64,7 @@ export function useApiResource<T extends { id?: number }, TCreate = Omit<T, 'id'
             const error = err as Error;
             console.error(messages.loadError, error);
             setError(error);
-            toast.error(messages.loadError);
+            toast.error(parseApiError(err));
         } finally {
             setLoading(false);
         }
@@ -80,7 +81,7 @@ export function useApiResource<T extends { id?: number }, TCreate = Omit<T, 'id'
         } catch (err) {
             const error = err as Error;
             console.error(messages.createError, error);
-            toast.error(messages.createError);
+            toast.error(parseApiError(err));
             throw error;
         }
     }, [api, messages.createSuccess, messages.createError, onBeforeCreate, onAfterCreate]);
@@ -96,7 +97,7 @@ export function useApiResource<T extends { id?: number }, TCreate = Omit<T, 'id'
         } catch (err) {
             const error = err as Error;
             console.error(messages.updateError, error);
-            toast.error(messages.updateError);
+            toast.error(parseApiError(err));
             throw error;
         }
     }, [api, messages.updateSuccess, messages.updateError, onBeforeUpdate, onAfterUpdate]);
@@ -111,7 +112,7 @@ export function useApiResource<T extends { id?: number }, TCreate = Omit<T, 'id'
         } catch (err) {
             const error = err as Error;
             console.error(messages.deleteError, error);
-            toast.error(messages.deleteError);
+            toast.error(parseApiError(err));
             throw error;
         }
     }, [api, messages.deleteSuccess, messages.deleteError, onBeforeDelete, onAfterDelete]);

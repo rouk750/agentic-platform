@@ -1,70 +1,70 @@
 # Frontend API Technical Specification
 
 ## Overview
-This directory (`frontend/src/api`) contains the Axios wrappers for the Backend REST API. These functions are the strict boundary between Frontend and Backend.
+API layer containing Axios wrappers for the Backend REST API. Includes JSON:API support and centralized error handling.
 
-## 1. Flow API (`flows.ts`)
-Manages `Flow` entities (the graphs).
+## Directory Structure
+```
+api/
+├── apiClient.ts       # Centralized axios client with JSON:API toggle
+├── errorHandler.ts    # Unified error parsing (JSON:API, FastAPI, network)
+├── flows.ts           # Flow CRUD + versioning
+├── templates.ts       # AgentTemplate CRUD + versioning
+├── settings.ts        # LLMProfile management
+├── smartNode.ts       # DSPy optimization services
+└── jsonapi/
+    ├── types.ts       # JSON:API TypeScript interfaces
+    └── deserializer.ts # Response transformation utilities
+```
 
-### Function Reference
-| Function | Signature | Description |
-|---|---|---|
-| `getAll` | `() => Promise<Flow[]>` | Fetches all flows. |
-| `getOne` | `(id: number) => Promise<Flow>` | Fetches single flow by ID. |
-| `create` | `(flow: Flow) => Promise<Flow>` | Creates new flow. |
-| `update` | `(id: number, flow: Partial<Flow>) => Promise<Flow>` | Updates flow (and triggers versioning if data changed). |
-| `getVersions` | `(id: number) => Promise<any[]>` | Fetches history. |
-| `deleteVersions` | `(fid: number, vids: number[]) => Promise<void>` | Bulk deletes versions. |
-| `restoreVersion` | `(fid: number, vid: number) => Promise<Flow>` | Reverts flow to version. |
-| `toggleLock` | `(fid: number, vid: number, isLocked: boolean) => Promise<void>` | Locks/unlocks version. |
+## API Client (`apiClient.ts`)
+Centralized axios instance with:
+- **Dynamic base URL** (Electron port discovery)
+- **JSON:API content negotiation** via `VITE_USE_JSON_API` flag
+- **Response interceptors** for error logging
 
-### Adherences & Usage
-*   **Dependencies**: `axios`, `window.electronAPI` (for port discovery).
-*   **Consumed By**:
-    *   `src/hooks/useApiResource.ts` (Generic CRUD wrapper).
-    *   `src/pages/FlowsPage.tsx` (Direct calls or via hook).
-    *   `src/store/graphStore.ts` (Loading graphs into editor).
+## Error Handling (`errorHandler.ts`)
+| Function | Description |
+|----------|-------------|
+| `parseApiError` | Extracts user-friendly message from any error type |
+| `logError` | Structured error logging for debugging |
+| `handleAsync` | Go-style `[result, error]` pattern for promises |
 
-## 2. Settings API (`settings.ts`)
-Manages `LLMProfile` configurations.
+## JSON:API Layer (`jsonapi/`)
+### Types (`types.ts`)
+- `JSONAPIResource<TAttributes>`, `JSONAPIDocument`
+- Domain attributes: `FlowAttributes`, `AgentTemplateAttributes`
 
-### Function Reference
-| Function | Signature | Description |
-|---|---|---|
-| `getModels` | `() => Promise<LLMProfile[]>` | List all profiles. |
-| `createModel` | `(p: LLMProfileCreate) => Promise<LLMProfile>` | Save new profile. |
-| `testSavedModel` | `(id: number) => Promise<boolean>` | Test connection for existing profile. |
-| `scanOllamaModels` | `() => Promise<string[]>` | Auto-discover local Ollama tags. |
-| `testConnection` | `(provider, model, key, url) => Promise<boolean>` | Test transient connection params. |
+### Deserializer (`deserializer.ts`)
+| Function | Description |
+|----------|-------------|
+| `deserializeOne` | Single resource → domain object |
+| `deserializeMany` | Collection → `{ items, meta }` |
+| `isJsonApiError` | Type guard for error responses |
 
-### Adherences & Usage
-*   **Dependencies**: `axios`, `types/settings`.
-*   **Consumed By**:
-    *   `src/components/settings/ModelList.tsx` (Listing & Testing).
-    *   `src/components/settings/AddModelDialog.tsx` (Creation & Scanning).
-    *   `src/components/nodes/AgentConfigDialog.tsx` (Fetching models for dropdown).
+## Flow API (`flows.ts`)
+| Function | Signature |
+|----------|-----------|
+| `getAll` | `() => Promise<Flow[]>` |
+| `create` | `(flow: FlowCreate) => Promise<Flow>` |
+| `update` | `(id, flow: FlowUpdate) => Promise<Flow>` |
+| `getVersions` | `(id) => Promise<FlowVersion[]>` |
+| `restoreVersion` | `(fid, vid) => Promise<Flow>` |
+| `toggleLock` | `(fid, vid, isLocked) => Promise<void>` |
 
-## 3. Smart Node API (`smartNode.ts`)
-Interacts with DSPy optimization services.
+## Templates API (`templates.ts`)
+Same structure as Flow API but for `AgentTemplate` entities.
 
-### Function Reference
-| Function | Signature | Description |
-|---|---|---|
-| `getAvailableGuardrails` | `() => Promise<GuardrailDefinition[]>` | Lists validators (Regex, JSON). |
-| `optimizeNode` | `(payload: OptimizationPayload) => Promise<any>` | Triggers DSPy compilation. |
+## Settings API (`settings.ts`)
+| Function | Description |
+|----------|-------------|
+| `getModels` | List all LLM profiles |
+| `createModel` | Create new profile |
+| `updateModel` | Update existing profile |
+| `deleteModel` | Delete profile |
+| `testConnection` | Test LLM connectivity |
 
-### Adherences & Usage
-*   **Consumed By**:
-    *   `src/components/nodes/SmartNodeConfigDialog.tsx` (Configuration UI).
-
-## 4. Templates API (`templates.ts`)
-Manages `AgentTemplate` (presets).
-
-### Function Reference
-*   `getAll`, `getOne`, `create`, `update`, `delete`.
-*   `getVersions`, `restoreVersion`, `deleteVersion`, `deleteVersions`, `toggleLock`.
-
-### Adherences & Usage
-*   **Consumed By**:
-    *   `src/hooks/useApiResource.ts`.
-    *   `src/pages/AgentsPage.tsx`.
+## Adherences
+- **Hooks**: `useApiResource`, `useVersionHistory` consume these APIs
+- **Types**: Re-export domain types from `@/types` for backward compatibility
+- **Stores**: `graphStore.ts` uses flow API for loading graphs

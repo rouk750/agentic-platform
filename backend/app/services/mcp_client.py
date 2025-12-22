@@ -2,12 +2,17 @@ import asyncio
 import json
 import os
 import shutil
+import aiofiles
 from contextlib import AsyncExitStack
 from typing import Dict, List, Optional, Any
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from mcp.client.sse import sse_client
+from app.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 class MCPClientManager:
     """
@@ -28,14 +33,15 @@ class MCPClientManager:
         Reads config and establishes connections to all defined servers.
         """
         if not os.path.exists(self.config_path):
-            print(f"MCP Config not found at {self.config_path}")
+            logger.warning("mcp_config_not_found", path=self.config_path)
             return
 
         try:
-            with open(self.config_path, 'r') as f:
-                config = json.load(f)
+            async with aiofiles.open(self.config_path, 'r') as f:
+                content = await f.read()
+                config = json.loads(content)
         except Exception as e:
-            print(f"Failed to load MCP config: {e}")
+            logger.error("mcp_config_load_failed", error=str(e))
             return
 
         servers = config.get("mcpServers", {})
@@ -47,15 +53,15 @@ class MCPClientManager:
                 elif "command" in server_config:
                     await self.connect_stdio(name, server_config)
                 else:
-                    print(f"Skipping server '{name}': No 'url' or 'command' found in config")
+                    logger.warning("mcp_server_skipped", server=name, reason="No 'url' or 'command' found")
             except Exception as e:
-                print(f"Failed to connect to server '{name}': {e}")
+                logger.error("mcp_server_connection_failed", server=name, error=str(e))
 
     async def connect_sse(self, name: str, config: Dict):
         url = config.get("url")
         headers = config.get("headers", {})
         
-        print(f"Connecting to MCP SSE server '{name}' at {url}...")
+        logger.info("mcp_sse_connecting", server=name, url=url)
         try:
             transport = await self.exit_stack.enter_async_context(sse_client(url=url, headers=headers))
             read, write = transport
@@ -64,11 +70,11 @@ class MCPClientManager:
             await session.initialize()
             
             self.sessions[name] = session
-            print(f"Connected to MCP SSE server '{name}'")
+            logger.info("mcp_sse_connected", server=name)
             await self._refresh_tools(name)
             
         except Exception as e:
-            print(f"Failed to connect to MCP SSE server '{name}': {e}")
+            logger.error("mcp_sse_connection_failed", server=name, error=str(e))
             raise e
 
     async def connect_stdio(self, name: str, config: Dict):
@@ -84,12 +90,12 @@ class MCPClientManager:
         full_env.update(env)
         
         # Verify executable
-        executable = shutil.which(command)
+        executable = await asyncio.to_thread(shutil.which, command)
         if not executable:
-             print(f"Warning: Executable '{command}' not found for server '{name}'")
+             logger.warning("mcp_executable_not_found", command=command, server=name)
              executable = command
 
-        print(f"Connecting to MCP Stdio server '{name}'...")
+        logger.info("mcp_stdio_connecting", server=name, command=executable)
         
         server_params = StdioServerParameters(
             command=executable,
@@ -98,7 +104,6 @@ class MCPClientManager:
         )
 
         try:
-            # We must keep the transport alive
             transport = await self.exit_stack.enter_async_context(stdio_client(server_params))
             read, write = transport
             
@@ -106,15 +111,12 @@ class MCPClientManager:
             await session.initialize()
             
             self.sessions[name] = session
-            print(f"Connected to MCP Stdio server '{name}'")
+            logger.info("mcp_stdio_connected", server=name)
             
-            # Cache tools
             await self._refresh_tools(name)
             
         except Exception as e:
-            print(f"Failed to connect to MCP Stdio server '{name}': {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error("mcp_stdio_connection_failed", server=name, error=str(e))
 
     async def connect_server(self, name: str, config: Dict):
          # Backward compatibility wrapper or alias
@@ -128,9 +130,9 @@ class MCPClientManager:
             try:
                 result = await self.sessions[name].list_tools()
                 self._tools_cache[name] = result.tools
-                print(f"Server '{name}' exposes {len(result.tools)} tools.")
+                logger.info("mcp_tools_discovered", server=name, count=len(result.tools))
             except Exception as e:
-                print(f"Failed to list tools for '{name}': {e}")
+                logger.error("mcp_tools_list_failed", server=name, error=str(e))
 
     def get_all_tools(self) -> List[Dict]:
         """
@@ -139,8 +141,6 @@ class MCPClientManager:
         all_tools = []
         for server_name, tools in self._tools_cache.items():
             for tool in tools:
-                # We need to preserve the object but maybe attach metadata
-                # The SDK 'Tool' object has name, description, inputSchema
                 tool_dict = {
                     "name": tool.name,
                     "description": tool.description,
@@ -160,3 +160,4 @@ class MCPClientManager:
 
     async def cleanup(self):
         await self.exit_stack.aclose()
+

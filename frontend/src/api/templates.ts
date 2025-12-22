@@ -1,26 +1,10 @@
 import axios from 'axios';
+import type { AgentTemplate, AgentTemplateVersion } from '../types/template';
+
+// Re-export for backward compatibility
+export type { AgentTemplate, AgentTemplateVersion } from '../types/template';
 
 const API_URL = 'http://localhost:8000/api';
-
-export interface AgentTemplate {
-    id?: number;
-    name: string;
-    description?: string;
-    type: string; // 'agent' | 'smart_node'
-    config: string; // JSON
-    is_archived?: boolean;
-    created_at?: string;
-    updated_at?: string;
-}
-
-export interface AgentTemplateVersion {
-    id: number;
-    template_id: number;
-    config: string;
-    created_at: string;
-    version_number: number;
-    is_locked?: boolean;
-}
 
 export const templateApi = {
     getAll: async (): Promise<AgentTemplate[]> => {

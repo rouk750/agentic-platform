@@ -1,199 +1,132 @@
+"""
+AgentTemplate API Routes
+
+RESTful API endpoints for AgentTemplate CRUD operations.
+Uses AgentTemplateService for business logic.
+"""
+
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Body
-from sqlmodel import Session, select
-from datetime import datetime
+from fastapi import APIRouter, Depends, Body
+from sqlmodel import Session
 
 from app.database import get_session
-from app.models.agent_template import AgentTemplate, AgentTemplateVersion
-from app.schemas.agent_template import AgentTemplateCreate, AgentTemplateRead, AgentTemplateUpdate, AgentTemplateVersionRead
+from app.schemas.agent_template import (
+    AgentTemplateCreate,
+    AgentTemplateRead,
+    AgentTemplateUpdate,
+    AgentTemplateVersionRead,
+)
+from app.services.template_service import AgentTemplateService
 
 router = APIRouter()
 
+
+def get_template_service(session: Session = Depends(get_session)) -> AgentTemplateService:
+    """Dependency injection for AgentTemplateService."""
+    return AgentTemplateService(session)
+
+
+# Template CRUD
+
 @router.get("/agent-templates", response_model=List[AgentTemplateRead])
-def read_agent_templates(session: Session = Depends(get_session)):
-    templates = session.exec(select(AgentTemplate)).all()
-    return templates
+def read_agent_templates(
+    include_archived: bool = False,
+    skip: int = 0,
+    limit: int = 100,
+    service: AgentTemplateService = Depends(get_template_service)
+):
+    """List all agent templates with optional pagination."""
+    return service.list_templates(skip=skip, limit=limit, include_archived=include_archived)
+
 
 @router.get("/agent-templates/{template_id}", response_model=AgentTemplateRead)
-def read_agent_template(template_id: int, session: Session = Depends(get_session)):
-    template = session.get(AgentTemplate, template_id)
-    if not template:
-        raise HTTPException(status_code=404, detail="Agent Template not found")
-    return template
+def read_agent_template(
+    template_id: int,
+    service: AgentTemplateService = Depends(get_template_service)
+):
+    """Get a single template by ID."""
+    return service.get_template(template_id)
+
 
 @router.post("/agent-templates", response_model=AgentTemplateRead)
-def create_agent_template(template_in: AgentTemplateCreate, session: Session = Depends(get_session)):
-    template = AgentTemplate.model_validate(template_in)
-    template.created_at = datetime.utcnow()
-    template.updated_at = datetime.utcnow()
-    session.add(template)
-    session.commit()
-    session.refresh(template)
-    
-    # Create initial version
-    version = AgentTemplateVersion(
-        template_id=template.id,
-        config=template.config,
-        created_at=datetime.utcnow(),
-        version_number=1
-    )
-    session.add(version)
-    session.commit()
-    
-    return template
+def create_agent_template(
+    template_in: AgentTemplateCreate,
+    service: AgentTemplateService = Depends(get_template_service)
+):
+    """Create a new agent template with initial version."""
+    return service.create_template(template_in)
+
 
 @router.put("/agent-templates/{template_id}", response_model=AgentTemplateRead)
-def update_agent_template(template_id: int, template_update: AgentTemplateUpdate, session: Session = Depends(get_session)):
-    db_template = session.get(AgentTemplate, template_id)
-    if not db_template:
-        raise HTTPException(status_code=404, detail="Agent Template not found")
-    
-    # Check if config changes to determine if versioning is needed
-    should_version = False
-    if template_update.config and template_update.config != db_template.config:
-        should_version = True
-    
-    template_data = template_update.model_dump(exclude_unset=True)
-    for key, value in template_data.items():
-        setattr(db_template, key, value)
-    
-    db_template.updated_at = datetime.utcnow()
-    session.add(db_template)
-    session.commit()
-    session.refresh(db_template)
-    
-    if should_version:
-        # Get latest version number
-        # Logic: find max version number or just count?
-        # Let's simple count existing versions + 1, or rely on auto-increment ID if strict numbering isn't required.
-        # But user wants neat versions. Let's do a simple count for now.
-        existing_versions = session.exec(select(AgentTemplateVersion).where(AgentTemplateVersion.template_id == template_id)).all()
-        next_version = len(existing_versions) + 1
-        
-        version = AgentTemplateVersion(
-            template_id=db_template.id,
-            config=db_template.config,
-            created_at=datetime.utcnow(),
-            version_number=next_version
-        )
-        session.add(version)
-        session.commit()
-        
-    return db_template
+def update_agent_template(
+    template_id: int,
+    template_update: AgentTemplateUpdate,
+    service: AgentTemplateService = Depends(get_template_service)
+):
+    """Update a template. Creates version if config changes."""
+    return service.update_template(template_id, template_update)
+
 
 @router.delete("/agent-templates/{template_id}")
-def delete_agent_template(template_id: int, session: Session = Depends(get_session)):
-    template = session.get(AgentTemplate, template_id)
-    if not template:
-        raise HTTPException(status_code=404, detail="Agent Template not found")
-        
-    # Manual cascade delete for versions
-    versions = session.exec(select(AgentTemplateVersion).where(AgentTemplateVersion.template_id == template_id)).all()
-    for v in versions:
-        session.delete(v)
-        
-    session.delete(template)
-    session.commit()
+def delete_agent_template(
+    template_id: int,
+    service: AgentTemplateService = Depends(get_template_service)
+):
+    """Delete a template and all its versions."""
+    service.delete_template(template_id)
     return {"ok": True}
+
+
+# Version Management
 
 @router.get("/agent-templates/{template_id}/versions", response_model=List[AgentTemplateVersionRead])
-def read_agent_template_versions(template_id: int, session: Session = Depends(get_session)):
-    template = session.get(AgentTemplate, template_id)
-    if not template:
-        raise HTTPException(status_code=404, detail="Agent Template not found")
-        
-    versions = session.exec(select(AgentTemplateVersion).where(AgentTemplateVersion.template_id == template_id).order_by(AgentTemplateVersion.created_at.desc())).all()
-    return versions
+def read_agent_template_versions(
+    template_id: int,
+    service: AgentTemplateService = Depends(get_template_service)
+):
+    """List all versions for a template."""
+    return service.list_versions(template_id)
 
-@router.post("/agent-templates/{template_id}/versions/{version_id}/restore", response_model=AgentTemplateRead)
-def restore_agent_template_version(template_id: int, version_id: int, session: Session = Depends(get_session)):
-    template = session.get(AgentTemplate, template_id)
-    if not template:
-        raise HTTPException(status_code=404, detail="Agent Template not found")
-        
-    version = session.get(AgentTemplateVersion, version_id)
-    if not version:
-        raise HTTPException(status_code=404, detail="Version not found")
-        
-    if version.template_id != template_id:
-        raise HTTPException(status_code=400, detail="Version does not belong to this template")
-        
-    template.config = version.config
-    template.updated_at = datetime.utcnow()
-    
-    session.add(template)
-    session.commit()
-    session.refresh(template)
-    return template
 
 @router.delete("/agent-templates/{template_id}/versions/{version_id}")
-def delete_agent_template_version(template_id: int, version_id: int, session: Session = Depends(get_session)):
-    template = session.get(AgentTemplate, template_id)
-    if not template:
-        raise HTTPException(status_code=404, detail="Agent Template not found")
-        
-    version = session.get(AgentTemplateVersion, version_id)
-    if not version:
-        raise HTTPException(status_code=404, detail="Version not found")
-        
-    if version.template_id != template_id:
-        raise HTTPException(status_code=400, detail="Version does not belong to this template")
-        
-    # Check if version is locked
-    if version.is_locked:
-        raise HTTPException(status_code=400, detail="Cannot delete a locked version")
-        
-    # Check if version is current (config matches)
-    if template.config == version.config:
-        raise HTTPException(status_code=400, detail="Cannot delete the current active version")
-        
-    session.delete(version)
-    session.commit()
+def delete_agent_template_version(
+    template_id: int,
+    version_id: int,
+    service: AgentTemplateService = Depends(get_template_service)
+):
+    """Delete a single version."""
+    service.delete_version(template_id, version_id)
     return {"ok": True}
+
 
 @router.delete("/agent-templates/{template_id}/versions")
-def delete_agent_template_versions(template_id: int, version_ids: List[int] = Body(...), session: Session = Depends(get_session)):
-    template = session.get(AgentTemplate, template_id)
-    if not template:
-        raise HTTPException(status_code=404, detail="Agent Template not found")
-        
-    statement = select(AgentTemplateVersion).where(AgentTemplateVersion.id.in_(version_ids))
-    versions = session.exec(statement).all()
-
-    if len(versions) != len(version_ids):
-        raise HTTPException(status_code=404, detail="One or more versions not found")
-        
-    for version in versions:
-        if version.template_id != template_id:
-            raise HTTPException(status_code=400, detail=f"Version {version.id} does not belong to this template")
-            
-        if version.is_locked:
-             raise HTTPException(status_code=400, detail=f"Version {version.id} is locked")
-             
-        if template.config == version.config:
-             raise HTTPException(status_code=400, detail=f"Version {version.id} is the current active version")
-             
-        session.delete(version)
-        
-    session.commit()
+def delete_agent_template_versions(
+    template_id: int,
+    version_ids: List[int] = Body(...),
+    service: AgentTemplateService = Depends(get_template_service)
+):
+    """Bulk delete multiple versions."""
+    for vid in version_ids:
+        service.delete_version(template_id, vid)
     return {"ok": True}
+
 
 @router.put("/agent-templates/{template_id}/versions/{version_id}/lock", response_model=AgentTemplateVersionRead)
 def toggle_agent_template_version_lock(
-    template_id: int, 
-    version_id: int, 
+    template_id: int,
+    version_id: int,
     is_locked: bool,
-    session: Session = Depends(get_session)
+    service: AgentTemplateService = Depends(get_template_service)
 ):
-    version = session.get(AgentTemplateVersion, version_id)
-    if not version:
-        raise HTTPException(status_code=404, detail="Version not found")
-        
-    if version.template_id != template_id:
-        raise HTTPException(status_code=400, detail="Version does not belong to this template")
-        
-    version.is_locked = is_locked
-    session.add(version)
-    session.commit()
-    session.refresh(version)
-    return version
+    """Lock or unlock a version."""
+    return service.toggle_version_lock(template_id, version_id, is_locked)
+
+
+@router.post("/agent-templates/{template_id}/versions/{version_id}/restore", response_model=AgentTemplateRead)
+def restore_agent_template_version(
+    template_id: int,
+    version_id: int,
+    service: AgentTemplateService = Depends(get_template_service)
+):
+    """Restore template to a previous version."""
+    return service.restore_version(template_id, version_id)

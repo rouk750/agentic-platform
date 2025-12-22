@@ -1,0 +1,7 @@
+# Prettier ignore patterns
+node_modules/
+dist/
+dist-electron/
+coverage/
+*.min.js
+*.min.css

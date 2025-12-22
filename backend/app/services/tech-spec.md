@@ -1,56 +1,126 @@
 # Backend Services Technical Specification
 
 ## Overview
-This directory (`backend/app/services`) contains the core business logic services.
+Business logic layer implementing the Service pattern. Services encapsulate domain operations and delegate data access to Repositories.
 
-## 1. LLM Factory (`llm_factory.py`)
+## Architecture
+```
+API Routes → Services → Repositories → Database
+                ↓
+           Exceptions (domain errors)
+```
 
-### `get_llm_profile(profile_id: int) -> LLMProfile`
-Retrieves a profile from the database.
+## Directory Structure
+```
+services/
+├── flow_service.py      # Flow business logic
+├── template_service.py  # AgentTemplate business logic
+├── llm_factory.py       # LLM instance creation
+├── tool_registry.py     # Tool discovery & registry
+├── mcp_client.py        # MCP server connections
+└── security.py          # Keyring operations
+```
 
-### `create_llm_instance(profile: LLMProfile) -> BaseChatModel`
-*   **Logic**:
-    1.  Decrypts API key from keyring (if `api_key_ref` is present).
-    2.  Calls `LLMProviderFactory.create`.
-    3.  Returns a configured LangChain object.
+---
 
-## 2. Tool Registry (`tool_registry.py`)
-Singleton registry for all available tools (Local + MCP).
+## FlowService (`flow_service.py`)
 
-### `load_tools()` (Async)
-*   Scans `app.tools_library` for subclasses of `BaseTool`.
-*   Initializes `MCPClientManager` and wraps MCP tools.
+Business logic for Flow entities with automatic versioning.
 
-### `get_tool(tool_id: str) -> BaseTool`
-*   Returns the executable tool instance.
+| Method | Signature | Description |
+|--------|-----------|-------------|
+| `list_flows` | `(skip, limit, include_archived)` | Paginated list |
+| `get_flow` | `(flow_id) → Flow` | Get or raise `ResourceNotFoundError` |
+| `create_flow` | `(FlowCreate) → Flow` | Create with timestamps |
+| `update_flow` | `(id, FlowUpdate) → Flow` | Update, auto-version if data changes |
+| `delete_flow` | `(id)` | Cascade delete with versions |
+| `list_versions` | `(flow_id)` | Ordered by created_at desc |
+| `restore_version` | `(flow_id, version_id)` | Restore flow data |
+| `delete_version` | `(flow_id, version_id)` | With lock/active checks |
+| `toggle_version_lock` | `(flow_id, version_id, is_locked)` | Lock/unlock |
 
-### `list_tools_metadata() -> List[Dict]`
-*   Returns JSON-friendly list of tools for Frontend UI.
+### Dependencies
+- `FlowRepository`, `FlowVersionRepository`
+- `app.exceptions` (ResourceNotFoundError, ResourceLockedError, ValidationError)
+- `app.logging`
 
-## 3. MCP Client Manager (`mcp_client.py`)
-Manages connections to Model Context Protocol servers.
+---
 
-### `MCPClientManager`
-#### `initialize()`
-*   Reads `mcp_config.json`.
-*   Establishes connections (SSE or Stdio).
+## AgentTemplateService (`template_service.py`)
 
-#### `get_all_tools() -> List[Dict]`
-*   Aggregates tools from all connected sessions.
+Same pattern as FlowService for AgentTemplate entities.
 
-#### `call_tool(server_name, tool_name, arguments)`
-*   Proxies execution to the remote server.
-*   **Safety**: Truncates output to 50k characters to prevent Context Window Exhaustion.
-*   **Schema**:
-    *   Generates `pydantic` models dynamically.
-    *   Optimizes schemas for Ollama compatibility (dummy args for empty tools, typed arrays).
+---
 
-## 4. Security (`security.py`)
-System Keyring wrapper.
+## LLM Factory (`llm_factory.py`)
 
-### `save_api_key(api_key: str) -> str`
-*   **Returns**: A UUID `key_ref`.
-*   **Side Effect**: Stores key in OS Keyring (e.g., Keychain on macOS).
+Creates LangChain LLM instances from database profiles.
 
-### `get_api_key(key_ref: str) -> str`
-*   Retrieves the plaintext key.
+| Method | Description |
+|--------|-------------|
+| `get_llm_profile(id)` | Fetch profile from DB |
+| `create_llm_instance(profile)` | Decrypt key, create LLM |
+| `get_model(id)` | **Cached** wrapper (LRU) returning ready-to-use LLM |
+| `invalidate_model_cache()` | Clear LLM cache |
+
+### Supported Providers
+OpenAI, Anthropic, Mistral, Ollama, Azure, LMStudio
+
+---
+
+## Tool Registry (`tool_registry.py`)
+
+Singleton registry for local and MCP tools.
+
+| Method | Description |
+|--------|-------------|
+| `load_tools()` | Scan tools_library + init MCP |
+| `get_tool(id)` | Get executable tool |
+| `list_tools_metadata()` | JSON for frontend UI |
+
+---
+
+## MCP Client (`mcp_client.py`)
+
+Model Context Protocol server connections.
+
+| Method | Description |
+|--------|-------------|
+| `initialize()` | Load config, connect servers |
+| `get_all_tools()` | Aggregate from all servers |
+| `call_tool(server, tool, args)` | Proxy execution |
+
+### Features
+- Non-blocking I/O with `aiofiles`
+- Output truncation (50k chars)
+- Dynamic Pydantic schema generation
+- Ollama-compatible schemas
+
+---
+
+## Security (`security.py`)
+
+OS keyring wrapper for API key storage.
+
+| Method | Description |
+|--------|-------------|
+| `save_api_key(key) → ref` | Store, return UUID reference |
+| `get_api_key(ref) → key` | Retrieve plaintext |
+
+---
+
+## Exception Hierarchy
+
+Services raise domain-specific exceptions (defined in `app/exceptions.py`):
+
+| Exception | HTTP | Usage |
+|-----------|------|-------|
+| `ResourceNotFoundError` | 404 | Entity not found |
+| `ResourceLockedError` | 423 | Version is locked |
+| `ValidationError` | 400 | Business rule violation |
+| `LLMConnectionError` | 502 | Provider unreachable |
+
+## Adherences
+- **Repositories**: `app.repositories.*`
+- **API Layer**: `app.api.*` routes inject services
+- **Config**: `app.config.settings`

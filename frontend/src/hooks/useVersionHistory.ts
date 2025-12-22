@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { parseApiError } from '../api/errorHandler';
 
 interface VersionHistoryOptions<TVersion, TRestored> {
     fetchVersions: (id: number) => Promise<TVersion[]>;
@@ -32,7 +33,7 @@ export function useVersionHistory<TVersion extends { id: number }, TRestored = u
             setVersions(data);
         } catch (error) {
             console.error("Failed to load versions", error);
-            toast.error("Failed to load versions");
+            toast.error(parseApiError(error));
         } finally {
             setLoading(false);
         }
@@ -48,7 +49,7 @@ export function useVersionHistory<TVersion extends { id: number }, TRestored = u
             }
         } catch (error) {
             console.error("Failed to restore version", error);
-            toast.error("Failed to restore version");
+            toast.error(parseApiError(error));
         }
     };
 
@@ -64,7 +65,7 @@ export function useVersionHistory<TVersion extends { id: number }, TRestored = u
             setSelectedVersionIds(newSelected);
         } catch (error) {
             console.error("Failed to delete version", error);
-            toast.error("Failed to delete version");
+            toast.error(parseApiError(error));
         }
     };
     
@@ -82,7 +83,7 @@ export function useVersionHistory<TVersion extends { id: number }, TRestored = u
             setSelectedVersionIds(new Set());
         } catch (error) {
             console.error("Failed to delete versions", error);
-            toast.error("Failed to delete versions");
+            toast.error(parseApiError(error));
         }
     };
     
@@ -100,7 +101,7 @@ export function useVersionHistory<TVersion extends { id: number }, TRestored = u
             ));
         } catch (error) {
             console.error("Failed to toggle lock", error);
-            toast.error("Failed to toggle lock");
+            toast.error(parseApiError(error));
         }
     };
     
