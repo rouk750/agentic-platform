@@ -16,6 +16,7 @@ interface RunState {
   toolStats: Record<string, Record<string, number>>; // nodeId -> toolName -> count
   tokenUsage: Record<string, { input: number; output: number; total: number }>;
   pendingStepTokens: Record<string, { input: number; output: number; total: number }>; // Transient for current step
+  pendingNodeInputs: Record<string, any>; // Transient inputs from node_active
   nodeSnapshots: Record<string, any[]>; // nodeId -> list of snapshots
   graphDefinition: any | null; // For debug/replay
   logs: LogEntry[];
@@ -39,7 +40,8 @@ interface RunState {
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
   appendToken: (token: string, nodeId?: string) => void;
   addLog: (entry: Omit<LogEntry, 'timestamp'>) => void;
-  addSnapshot: (nodeId: string, snapshot: any) => void;
+  storeNodeInput: (nodeId: string, input: any) => void;
+  addSnapshot: (nodeId: string, snapshot: any, output?: any) => void;
   setGraphDefinition: (graph: any) => void;
   completeNodeMessage: (nodeId: string) => void;
   clearSnapshots: () => void;
@@ -60,6 +62,7 @@ export const useRunStore = create<RunState>((set) => ({
   toolStats: {},
   tokenUsage: {},
   pendingStepTokens: {},
+  pendingNodeInputs: {},
   nodeSnapshots: {},
   graphDefinition: null,
   iteratorProgress: {},
@@ -212,29 +215,43 @@ export const useRunStore = create<RunState>((set) => ({
       logs: [...state.logs, { ...entry, timestamp: Date.now() }],
     })),
 
-  addSnapshot: (nodeId, snapshot) =>
+  storeNodeInput: (nodeId, input) =>
+    set((state) => ({
+      pendingNodeInputs: { ...state.pendingNodeInputs, [nodeId]: input },
+    })),
+
+  addSnapshot: (nodeId, snapshot, output) =>
     set((state) => {
       // Consume pending tokens for this step
       const stepTokens = state.pendingStepTokens[nodeId];
+      
+      // Consume pending input for this step
+      const stepInput = state.pendingNodeInputs[nodeId];
 
       // Enrich snapshot with metadata
       const enrichedSnapshot = {
         ...snapshot,
+        input: stepInput, // Add explicit input
+        output: output,   // Add explicit output
         _meta: {
           tokens: stepTokens,
           timestamp: Date.now(),
         },
       };
 
-      // Clear pending tokens for this node
-      const { [nodeId]: _, ...remainingPending } = state.pendingStepTokens;
+      // Clear pending tokens and input for this node
+      const { [nodeId]: _, ...remainingPendingTokens } = state.pendingStepTokens;
+      // decided: keep input? No, consume it.
+      // Actually, if we loop, we might want to keep it? No, loop = new active = new input.
+      const { [nodeId]: __, ...remainingPendingInputs } = state.pendingNodeInputs;
 
       return {
         nodeSnapshots: {
           ...state.nodeSnapshots,
           [nodeId]: [...(state.nodeSnapshots[nodeId] || []), enrichedSnapshot],
         },
-        pendingStepTokens: remainingPending,
+        pendingStepTokens: remainingPendingTokens,
+        pendingNodeInputs: remainingPendingInputs,
         logs: [
           ...state.logs,
           {

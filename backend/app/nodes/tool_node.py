@@ -54,4 +54,21 @@ class ToolNode:
                 name=tool_name
             ))
             
-        return {"messages": results, "last_sender": self.node_id}
+        # [FEATURE] Deep Observability: explicitly return the last tool's input/output
+        # This allows the frontend to show "Input" and "Output" in the Trace tab
+        # We define "output" as the last tool execution result for now, or a summary.
+        trace_output = {
+            "type": "tool_execution",
+            "tools": [
+                {
+                    "name": tc['name'],
+                    "arguments": tc['args'], 
+                    "result": str(output) # Captures the last one, or could be a list
+                } for tc in tool_calls
+            ],
+            # For simple single-tool view:
+            "last_tool_input": tool_calls[-1]['args'] if tool_calls else {},
+            "last_tool_output": str(output)
+        }
+            
+        return {"messages": results, "last_sender": self.node_id, "output": trace_output}

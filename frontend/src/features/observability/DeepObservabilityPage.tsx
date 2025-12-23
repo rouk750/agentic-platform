@@ -14,9 +14,12 @@ interface StepSnapshot {
   state: any;
   created_at: string;
   duration?: number;
-  tokens?: number;
+  tokens?: { input: number; output: number; total: number } | number; // Support both for backward compat
   status: 'success' | 'error' | 'pending';
   label?: string;
+  // allow flexible properties for input/output if we decide to map them at top level
+  input?: any;
+  output?: any;
 }
 
 export default function DeepObservabilityPage() {
@@ -47,7 +50,9 @@ export default function DeepObservabilityPage() {
           created_at: snap.created_at || new Date().toISOString(),
           status: 'success',
           label: nodeLabels[nodeId] || nodeId,
-          tokens: snap._meta?.tokens?.total,
+          tokens: snap._meta?.tokens, // Pass full token object if available
+          input: snap.state?.input ?? snap.input, // Explicitly map input if available
+          output: snap.state?.output ?? snap.output, // Explicitly map output if available
           // Use config for extra metadata if needed
         });
       });

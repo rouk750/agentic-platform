@@ -164,15 +164,42 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
                          has_tool_calls = False
                          if hasattr(output, "tool_calls") and output.tool_calls:
                              has_tool_calls = True
+                         # [FEATURE] Tool Highlighting Persistence
+                         # Check if output contains tool calls (Agent -> Tool)
+                         has_tool_calls = False
+                         if hasattr(output, "tool_calls") and output.tool_calls:
+                             has_tool_calls = True
                          elif isinstance(output, dict) and output.get("tool_calls"):
                              has_tool_calls = True
                          # [FIX] Handle standard LangGraph dict return {"messages": [AIMessage]}
                          elif isinstance(output, dict) and "messages" in output:
                              msgs = output["messages"]
-                             if msgs and hasattr(msgs[-1], "tool_calls") and msgs[-1].tool_calls:
-                                 has_tool_calls = True
+                             if msgs: 
+                                 # Tool Check
+                                 if hasattr(msgs[-1], "tool_calls") and msgs[-1].tool_calls:
+                                     has_tool_calls = True
+                                     
+                                 # [FEATURE] Manual Token Usage Reporting (e.g. from SmartNode)
+                                 # Iterate messages to find usage_metadata
+                                 for m in msgs:
+                                     usage = getattr(m, "usage_metadata", None)
+                                     # Fallback to additional_kwargs if needed
+                                     if not usage and hasattr(m, "additional_kwargs"):
+                                         usage = m.additional_kwargs.get("usage_metadata")
+                                         
+                                     if usage:
+                                         # Emit token_usage event manually
+                                         await websocket.send_json({
+                                             "type": "token_usage",
+                                             "node_id": event["name"],
+                                             "usage": usage
+                                         })
                          
                          safe_data["has_tool_calls"] = has_tool_calls
+
+                         # [FEATURE] Deep Observability: Capture explicit output
+                         from app.utils.observability_utils import make_serializable
+                         safe_data["output"] = make_serializable(output)
  
                          # [FEATURE] Deep Observability Snapshot
                          # Fetch the full state after this node's execution
@@ -188,15 +215,16 @@ async def websocket_endpoint(websocket: WebSocket, graph_id: str):
                                      # Serialize the state
                                      # Messages need specific handling to be JSON serializable
                                      from langchain_core.messages import messages_to_dict
+                                     # Already imported above or top level
                                      
                                      current_values = state_snapshot.values
                                      serialized_state = {}
                                      
-                                     if "messages" in current_values:
-                                         serialized_state["messages"] = messages_to_dict(current_values["messages"])
-                                     
-                                     if "context" in current_values:
-                                         serialized_state["context"] = current_values["context"]
+                                     for key, value in current_values.items():
+                                         if key == "messages":
+                                             serialized_state[key] = messages_to_dict(value)
+                                         else:
+                                             serialized_state[key] = make_serializable(value)
 
                                      snapshot_payload = {
                                          "node_id": event["name"],

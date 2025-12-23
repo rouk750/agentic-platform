@@ -42,6 +42,7 @@ export function RuntimeProvider({ children }: RuntimeProviderProps) {
     addTokenUsage,
     setGraphDefinition,
     completeNodeMessage,
+    storeNodeInput,
   } = useRunStore();
 
   const connect = useCallback(
@@ -106,6 +107,11 @@ export function RuntimeProvider({ children }: RuntimeProviderProps) {
                   addActiveNode(data.node_id);
                   incrementNodeExecution(data.node_id);
 
+                  // [FIX] Store input for observability
+                  if (data.input) {
+                    storeNodeInput(data.node_id, data.input);
+                  }
+
                   const currentCount =
                     useRunStore.getState().nodeExecutionCounts[data.node_id] || 1;
                   const label = useRunStore.getState().nodeLabels[data.node_id] || data.node_id;
@@ -135,7 +141,9 @@ export function RuntimeProvider({ children }: RuntimeProviderProps) {
                   }
 
                   if (data.snapshot) {
-                    addSnapshot(data.node_id, data.snapshot);
+                    // [FIX] Pass optional output if available
+                    const output = data.data?.output;
+                    addSnapshot(data.node_id, data.snapshot, output);
                   }
 
                   // Mark the LAST message from this node as complete,

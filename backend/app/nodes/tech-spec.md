@@ -56,8 +56,21 @@ Executes tools requested by the previous Agent message.
     3.  Fetches tool implementation from `app.services.tool_registry`.
     4.  Executes `tool.ainvoke(args)`.
     5.  Returns list of `ToolMessage` objects.
+    6.  **Observability Trace**: Returns an explicit `output` dictionary containing `tools` (list of `{name, arguments, result}`) and `last_tool_input`/`output` for frontend Trace inspection.
 
-## 4. Smart Node (`smart_node.py`)
+## 4. Iterator Node (`iterator_node.py`)
+
+### `IteratorNode`
+Manages looping over a list of items.
+
+#### `invoke(state: GraphState)`
+*   **Logic**:
+    1.  Reads input list from `state['context']` (Shared Blackboard).
+    2.  Maintains an internal queue in `context` (e.g., `_iterator_queue_{id}`).
+    3.  **State Update**: Writes the current item and updated queue to `context` (using overwrite reducer to prevent list explosion).
+    4.  Returns `_signal="NEXT"` or `"COMPLETE"`.
+
+## 5. Smart Node (`smart_node.py`)
 
 ### `SmartNode`
 Advanced node using **DSPy** for optimizeable tasks ("Predict", "ChainOfThought").
@@ -78,3 +91,6 @@ Advanced node using **DSPy** for optimizeable tasks ("Predict", "ChainOfThought"
     5.  **Loading**: Checks `resources/smart_nodes/` for a compiled version.
     6.  **Execution**: Runs within `dspy.context`.
     7.  **Return**: Updates state with output keys AND appends a `HumanMessage`.
+    8.  **Token Usage**:
+        *   Extracts usage from `dspy_lm.history` (LiteLLM/Ollama).
+        *   **Fallback**: If provider reports 0 tokens, applies heuristic (1 token = 4 chars) by scanning history to ensure UI visibility.

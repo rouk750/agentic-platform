@@ -31,11 +31,10 @@ export default function ExecutionTimeline({ steps, selectedId, onSelect }: Timel
             <div
               key={step.id}
               onClick={() => onSelect(step.id)}
-              className={`p-3 rounded-lg border cursor-pointer transition-all ${
-                isSelected
+              className={`p-3 rounded-lg border cursor-pointer transition-all ${isSelected
                   ? 'bg-blue-50 border-blue-200 ring-1 ring-blue-200'
                   : 'bg-white border-slate-200 hover:border-blue-300'
-              }`}
+                }`}
             >
               <div className="flex items-start gap-3">
                 <div className="mt-0.5 text-green-500">
@@ -74,7 +73,10 @@ export default function ExecutionTimeline({ steps, selectedId, onSelect }: Timel
                     )}
                     {step.tokens && (
                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 rounded text-[10px] text-slate-600 font-mono">
-                        {step.tokens} tok
+                        {typeof step.tokens === 'number'
+                          ? step.tokens
+                          : (step.tokens as any)?.total ?? (step.tokens as any)?.total_tokens}
+                        {' '}tok
                       </span>
                     )}
                   </div>

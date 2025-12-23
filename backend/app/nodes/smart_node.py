@@ -34,10 +34,15 @@ class SmartNode:
         # Convention: usage of state[key] if key matches input name.
         
         dspy_inputs = {}
+        context = state.get("context", {})
+        
         for inp in self.inputs:
             key = inp["name"]
-            # Try to find key in state (top level) or in last message content?
-            if key in state:
+            # 1. Try Shared Context (Blackboard) - Priority for variables
+            if key in context:
+                dspy_inputs[key] = context[key]
+            # 2. Try Top-level State (rarely used for vars, but maybe for direct inputs)
+            elif key in state:
                 dspy_inputs[key] = state[key]
         
         # Fallback: If we have not found inputs yet, and we have messages,
@@ -90,7 +95,7 @@ class SmartNode:
             if not mapped:
                 first_input_name = self.inputs[0]["name"]
                 dspy_inputs[first_input_name] = last_msg_content
-                print(f"DEBUG SmartNode: Auto-mapped message content to input '{first_input_name}'")
+
         
         if not dspy_inputs and self.inputs:
              return {"error": f"Missing inputs for {self.name}. Expected { [i['name'] for i in self.inputs] }"}
@@ -283,6 +288,126 @@ class SmartNode:
              except:
                  pass
             
+        # 7. Extract Token Usage from DSPy History
+        usage_metadata = {"input_tokens": 0, "output_tokens": 0, "total_tokens": 0}
+        debug_history_dump = {}
+
+        def _extract_from_obj(u):
+            """Helper to extract usage from a dict or object"""
+            i = 0
+            o = 0
+            t = 0
+            # Try dict access
+            if isinstance(u, dict):
+                i = u.get("prompt_tokens") or u.get("input_tokens") or 0
+                o = u.get("completion_tokens") or u.get("output_tokens") or 0
+                t = u.get("total_tokens") or 0
+            # Try object attributes
+            else:
+                i = getattr(u, "prompt_tokens", 0) or getattr(u, "input_tokens", 0)
+                o = getattr(u, "completion_tokens", 0) or getattr(u, "output_tokens", 0)
+                t = getattr(u, "total_tokens", 0)
+            return i, o, t
+
+        try:
+            if hasattr(dspy_lm, "history") and dspy_lm.history:
+                if len(dspy_lm.history) > 0:
+                    last = dspy_lm.history[-1]
+                    debug_history_dump["last_keys"] = list(last.keys())
+                    
+                    # Capture kwargs
+                    if "kwargs" in last:
+                        debug_history_dump["kwargs_keys"] = list(last["kwargs"].keys())
+                        debug_history_dump["kwargs_repr"] = str(last["kwargs"])
+
+                    if "usage" in last:
+                        debug_history_dump["top_usage_repr"] = str(last["usage"])
+                    
+                    if "response" in last:
+                        r = last["response"]
+                        debug_history_dump["resp_type"] = str(type(r))
+                        
+                        # Try to invoke to_dict or dict() or vars()
+                        try:
+                            if hasattr(r, "model_dump"):
+                                debug_history_dump["resp_model_dump"] = r.model_dump()
+                            elif hasattr(r, "dict"):
+                                debug_history_dump["resp_dict"] = r.dict()
+                            else:
+                                debug_history_dump["resp_vars"] = str(vars(r))
+                        except Exception as e:
+                            debug_history_dump["resp_dump_error"] = str(e)
+
+                        if hasattr(r, "usage"):
+                             debug_history_dump["resp_usage_repr"] = str(r.usage)
+                        elif isinstance(r, dict) and "usage" in r:
+                             debug_history_dump["resp_usage_dict"] = str(r["usage"])
+
+                for interaction in dspy_lm.history:
+                    # Generic extraction
+                    i, o, t = 0, 0, 0
+                    
+                    # 1. Try top-level usage
+                    if "usage" in interaction and interaction["usage"]:
+                         ti, to, tt = _extract_from_obj(interaction["usage"])
+                         if ti + to + tt > 0:
+                             usage_metadata["input_tokens"] += ti
+                             usage_metadata["output_tokens"] += to
+                             usage_metadata["total_tokens"] += tt
+                             continue # Skip response check if we found it here
+                    
+                if "response" in interaction:
+                        resp = interaction["response"]
+                        u_cand = None
+                        if isinstance(resp, dict):
+                            u_cand = resp.get("usage")
+                        elif hasattr(resp, "usage"):
+                            u_cand = resp.usage
+                        
+                        if u_cand:
+                             ti, to, tt = _extract_from_obj(u_cand)
+                             usage_metadata["input_tokens"] += ti
+                             usage_metadata["output_tokens"] += to
+                             usage_metadata["total_tokens"] += tt
+                
+                # 3. FALLBACK: Manual Calculation if Usage is 0 (Common with some Providers/Ollama via LiteLLM)
+                if usage_metadata["total_tokens"] == 0:
+                    # Heuristic: 1 token ~= 4 chars
+                    # We iterate history to approximate inputs and outputs.
+                    est_input = 0
+                    est_output = 0
+                    
+                    for interaction in dspy_lm.history:
+                         # Inputs
+                         if "messages" in interaction:
+                             # sum content of messages
+                             for m in interaction["messages"]:
+                                 c = m.get("content", "")
+                                 est_input += len(str(c))
+                         elif "prompt" in interaction:
+                             est_input += len(str(interaction["prompt"]))
+                         
+                         # Outputs
+                         if "response" in interaction:
+                             # Try to get choices
+                             r = interaction["response"]
+                             content = ""
+                             # Standard Litellm/OpenAI structure
+                             if hasattr(r, "choices") and r.choices:
+                                 content = r.choices[0].message.content
+                             elif isinstance(r, dict) and "choices" in r:
+                                 content = r["choices"][0]["message"]["content"]
+                             
+                             est_output += len(str(content))
+                    
+                    usage_metadata["input_tokens"] = est_input // 4
+                    usage_metadata["output_tokens"] = est_output // 4
+                    usage_metadata["total_tokens"] = usage_metadata["input_tokens"] + usage_metadata["output_tokens"]
+                    
+        except Exception:
+            pass
+            
+        
         # Return state update. 
         from langchain_core.messages import HumanMessage
         import re
@@ -293,7 +418,24 @@ class SmartNode:
         
         # Add explicit header
         final_content = f"### RESULT FROM {self.name} ###\n{primary_output_content}"
-        human_msg = HumanMessage(content=final_content, name=sanitized_name)
+        
+        additional_kwargs = {"usage_metadata": usage_metadata, "_dspy_debug": debug_history_dump}
+
+        # Attach usage metadata (Standard LangChain Core 0.2+)
+        try:
+             human_msg = HumanMessage(
+                 content=final_content, 
+                 name=sanitized_name,
+                 usage_metadata=usage_metadata,
+                 additional_kwargs=additional_kwargs
+             )
+        except Exception:
+             # Fallback for older versions
+             human_msg = HumanMessage(
+                 content=final_content, 
+                 name=sanitized_name,
+                 additional_kwargs=additional_kwargs
+             )
         
         # SmartNode is generic -> it updates keys in state AND appends a message
         return {**outputs, "messages": [human_msg], "last_sender": self.node_id}

@@ -80,7 +80,7 @@ Same structure as Flow routes for CRUD and versioning operations.
    - `token`: LLM partial output
    - `node_active/finished`: Node lifecycle
    - `tool_start/end`: Tool execution
-   - `token_usage`: Per-step usage
+   - `token_usage`: Per-step usage (automatic or manual fallback for SmartNodes)
    - `interrupt`: HITL breakpoint
    - `error`: Runtime exception
 4. **Control**: `{"command": "resume"}` to continue

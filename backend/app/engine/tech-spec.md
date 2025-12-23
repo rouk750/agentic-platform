@@ -91,7 +91,7 @@ await manager.notify(TokenEvent(content="Hello"))
 |-------|------|-------------|
 | `messages` | `list[AnyMessage]` | Append-only execution log |
 | `inputs` | `dict` | Initial flow inputs |
-| `context` | `dict` | Cross-node variable store |
+| `context` | `dict` | Cross-node variable store. **Reducers**: Overwrites keys (including lists) to prevent duplication loops. |
 | `_signal` | `str` | Iterator control signal |
 
 ---
