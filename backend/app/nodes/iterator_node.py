@@ -64,17 +64,22 @@ class IteratorNode:
             
             print_debug(f"ITERATOR {self.label} [NEXT]", {"Item": str(next_item)[:100], "Remaining": len(queue), "Progress": f"{current_index}/{total}"})
             
+            # Update usage of context
+            new_context = {
+                queue_key: queue,
+                total_key: total,
+                self.output_item_variable: next_item
+            }
+            
             return {
-                # Update context with new queue state and current item
-                queue_key: queue, 
-                total_key: total, # Persist total
-                self.output_item_variable: next_item,
+                # Merge into context
+                "context": new_context,
                 
-                # Signal for the Router/Compiler
+                # Signals don't go into context
                 "_signal": "NEXT",
                 "last_sender": self.node_id,
                 
-                # Metadata for Frontend
+                # Metadata is for frontend via node_finished event, usually piggybacks on output or state
                 "_iterator_metadata": {
                     "node_id": self.node_id,
                     "progress": f"{current_index}/{total}",
@@ -87,10 +92,15 @@ class IteratorNode:
             # Queue is empty -> Finished
             print_debug(f"ITERATOR {self.label} [COMPLETE]", {"Status": "Done"})
             
-            return {
-                queue_key: [], # Ensure it stays empty
+            # Clear/Reset context vars
+            new_context = {
+                queue_key: [],
                 total_key: total,
-                self.output_item_variable: None, # Optional: clear current item
+                self.output_item_variable: None
+            }
+            
+            return {
+                "context": new_context,
                 "_signal": "COMPLETE",
                 "last_sender": self.node_id,
                 "_iterator_metadata": {

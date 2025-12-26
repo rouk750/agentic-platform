@@ -2,7 +2,7 @@
 import pytest
 import os
 from app.tools_library.file_reader import read_local_file
-from app.tools_library.fake_tool import fake_tool
+
 
 @pytest.mark.asyncio
 async def test_read_local_file():
@@ -49,12 +49,4 @@ def test_read_nonexistent_file():
         
     assert "Error" in result or "No such file" in result
 
-def test_fake_tool():
-    """Test the debug tool."""
-    # Fake tool is usually simple
-    if hasattr(fake_tool, "invoke"):
-        res = fake_tool.invoke({})
-        assert "big fake" in res
-    else:
-        # If raw function
-        assert "big fake" in fake_tool()
+

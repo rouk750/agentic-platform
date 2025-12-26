@@ -23,6 +23,7 @@ This feature (`frontend/src/features/observability`) provides a comprehensive de
 *   **Purpose**: Inspects the internal state of a node execution.
 *   **Features**:
     *   **State Snapshot**: Full JSON view of `GraphState`.
+    *   **Trace IO**: Dedicated tab for Tool Input/Arguments and Output/Results.
     *   **Raw Frame**: Debug view of the raw event data.
 
 ### `PromptPlayground.tsx`
@@ -38,7 +39,7 @@ This feature (`frontend/src/features/observability`) provides a comprehensive de
 EXTENDED to support Observability:
 *   `tokenUsage`: Consolidated token metrics per node.
 *   `pendingStepTokens`: Transient token accumulator for per-step precision.
-*   `nodeSnapshots`: History of state changes per node.
+*   `nodeSnapshots`: History of state changes per node (includes explicit Input/Output for Traces).
 *   `graphDefinition`: Persisted copy of the compiled graph for replay/isolation.
 
 ### `RuntimeContext` (`RuntimeContext.tsx`)

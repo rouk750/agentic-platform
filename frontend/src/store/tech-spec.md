@@ -20,7 +20,10 @@ Manages the live execution session of an Agent.
     *   `activeNodeIds`: List of currently executing node IDs (supports parallel execution).
     *   `pausedNodeId`: Node ID where execution is paused (HITL).
     *   `nodeExecutionCounts`: Track loops.
+    *   `nodeExecutionCounts`: Track loops.
     *   `toolStats`: Track tool execution counts per node.
+    *   `nodeSnapshots`: Complete history of state changes (including Inputs/Outputs) for debugging.
+    *   `graphDefinition`: Stored graph structure for replay.
 *   **Adherences**:
     *   **Updated By**: `useAgentRuntime` (WebSocket events).
     *   **Consumed By**:

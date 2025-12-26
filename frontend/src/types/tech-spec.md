@@ -1,30 +1,62 @@
 # Frontend Types Technical Specification
 
 ## Overview
-This directory (`frontend/src/types`) serves as the central dictionary for TypeScript interfaces, ensuring type safety across Store, Components, and API.
+Central type definitions for the frontend application. All types are exported from `types/index.ts` for clean imports.
 
-## 1. Node Data Structures
+## Directory Structure
+```
+types/
+├── index.ts          # Central barrel export
+├── flow.ts           # Flow, FlowVersion, FlowCreate, FlowUpdate
+├── template.ts       # AgentTemplate, AgentTemplateVersion
+├── settings.ts       # LLMProfile, LLMProvider
+├── agent.ts          # AgentNodeData
+├── router.ts         # RouterNodeData, RouteCondition
+├── smartNode.ts      # SmartNodeData
+├── iterator.ts       # IteratorNodeData
+├── execution.ts      # Message, LogEntry
+└── common.ts         # NodeData, SchemaField
+```
+
+## Domain Entities
+
+### Flow (`flow.ts`)
+| Type | Description |
+|------|-------------|
+| `Flow` | Workflow graph entity |
+| `FlowVersion` | Historical snapshot |
+| `FlowCreate` | Creation payload (no id/timestamps) |
+| `FlowUpdate` | Partial update payload |
+
+### AgentTemplate (`template.ts`)
+| Type | Description |
+|------|-------------|
+| `AgentTemplate` | Reusable agent configuration |
+| `AgentTemplateVersion` | Historical snapshot |
+
+### LLMProfile (`settings.ts`)
+| Type | Description |
+|------|-------------|
+| `LLMProvider` | Union: 'openai' \| 'anthropic' \| etc. |
+| `LLMProfile` | Model configuration entity |
+
+## Node Data Types
 
 ### `AgentNodeData` (`agent.ts`)
-The payload for Agent Nodes.
-*   **Core**: `modelName`, `system_prompt`, `tools`.
-*   **Flow Attributes**: `isStart` (Entry point flag).
-*   **Template Sync**: `_templateId`, `_templateVersion` (for "Eject" or Update logic).
-*   **Model Config**: `profile_id`, `provider`, `model_id` (Flattened for easier access by Backend?).
+- **Core**: `modelName`, `system_prompt`, `tools`
+- **Flow**: `isStart` (entry point flag)
+- **Template Sync**: `_templateId`, `_templateVersion`
 
 ### `RouterNodeData` (`router.ts`)
-*   `routes`: Array of `{ condition, value, target_handle }`.
+- `routes`: Array of `RouteCondition`
 
-## 2. Execution Domain (`execution.ts`)
+## JSON:API Integration
+JSON:API attribute types are defined in `api/jsonapi/types.ts`:
+- `FlowAttributes`, `AgentTemplateAttributes`, `LLMProfileAttributes`
+- Deserializers in `deserializer.ts` convert JSON:API → domain types
 
-### `Message`
-The atomic unit of the Chat/Run log.
-*   `role`: 'user' | 'ai' | 'tool' | 'trace' | 'system'.
-*   `traceDetails`: `{ nodeId, input, count }` (Used for "Trace" debugging messages).
-*   `toolDetails`: `{ name, input, output }`.
+## Adherences
+- **API Layer**: `api/flows.ts`, `api/templates.ts` re-export domain types
+- **Hooks**: `useApiResource`, `useVersionHistory` use domain types
+- **Stores**: `runStore.ts` uses `Message`, `LogEntry` from execution
 
-## 3. Settings (`settings.ts`)
-*   `LLMProfile`: Defines a configured Model Provider.
-
-## 4. Refactoring Opportunities
-*   **Zod Integration**: These types are purely static. Integrating `zod` schemas here would allow for runtime validation of API responses, ensuring the Frontend doesn't crash on malformed Backend data.

@@ -12,10 +12,10 @@ def smart_merge_dicts(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
     """
     output = a.copy()
     for k, v in b.items():
-        if k in output and isinstance(output[k], list) and isinstance(v, list):
-            output[k] = output[k] + v
-        else:
-            output[k] = v
+        # [FIX] Do NOT append lists by default. This causes massive recursion issues 
+        # for Iterators that store their queue (a list) in context.
+        # Use explicit overwrite.
+        output[k] = v
     return output
 
 def overwrite_reducer(a: Optional[str], b: Optional[str]) -> Optional[str]:

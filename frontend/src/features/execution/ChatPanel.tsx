@@ -10,262 +10,281 @@ import { Link } from 'react-router-dom';
 // Wait, I need to check where useGraphStore is. Assuming standard path.
 
 export function ChatPanel() {
-    const [input, setInput] = useState('');
-    const scrollRef = useRef<HTMLDivElement>(null);
+  const [input, setInput] = useState('');
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-    const { messages, status, clearSession, pausedNodeId, nodeLabels, runId } = useRunStore();
-    const { connect, stop, resume } = useAgentRuntime();
+  const { messages, status, clearSession, pausedNodeId, nodeLabels, runId } = useRunStore();
+  const { connect, stop, resume } = useAgentRuntime();
 
-    // Actually, useGraphStore likely stores nodes/edges.
-    // I need to confirm how to get the graph layout to send to backend.
-    // Assuming `useGraphStore` has `nodes` and `edges` and I can structure it.
-    const nodes = useGraphStore((state) => state.nodes);
-    const edges = useGraphStore((state) => state.edges);
+  // Actually, useGraphStore likely stores nodes/edges.
+  // I need to confirm how to get the graph layout to send to backend.
+  // Assuming `useGraphStore` has `nodes` and `edges` and I can structure it.
+  const nodes = useGraphStore((state) => state.nodes);
+  const edges = useGraphStore((state) => state.edges);
 
-    useEffect(() => {
-        // Auto-scroll
-        if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-    }, [messages]);
+  useEffect(() => {
+    // Auto-scroll
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
-    const handleRun = () => {
-        if (!input.trim() && messages.length === 0) return;
+  const handleRun = () => {
+    if (!input.trim() && messages.length === 0) return;
 
-        if (status === 'running') {
-            console.log("Stopping execution...");
-            stop();
-            return;
-        }
+    if (status === 'running') {
+      console.log('Stopping execution...');
+      stop();
+      return;
+    }
 
-        // Construct graph payload
-        const graphJson = { nodes, edges };
-        const prompt = input || "Start"; // Default prompt if re-running without input?
+    // Construct graph payload
+    const graphJson = { nodes, edges };
+    const prompt = input || 'Start'; // Default prompt if re-running without input?
 
-        connect(graphJson, prompt);
-        setInput('');
+    connect(graphJson, prompt);
+    setInput('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleRun();
+    }
+  };
+
+  const [width, setWidth] = useState(384); // Default 96 * 4 = 384px
+  const [isResizing, setIsResizing] = useState(false);
+  const [showTraces, setShowTraces] = useState(true);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      // ... (existing resize logic skipped for brevity in replace block if possible, but I need to be careful with context)
+      // Actually, I can just insert the state at the top and the button in the header in one go if I include enough context,
+      // or split it. Splitting is safer.
+      // Let's just add the state first.
+      // Calculate new width: Window Width - Mouse X
+      // Adding a min-width constraint (e.g., 300px) and max-width (e.g., 800px)
+      const newWidth = document.body.clientWidth - e.clientX;
+      if (newWidth > 300 && newWidth < 800) {
+        setWidth(newWidth);
+      }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleRun();
-        }
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.cursor = 'default';
     };
 
-    const [width, setWidth] = useState(384); // Default 96 * 4 = 384px
-    const [isResizing, setIsResizing] = useState(false);
-    const [showTraces, setShowTraces] = useState(true);
+    if (isResizing) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'col-resize';
+    }
 
-    useEffect(() => {
-        const handleMouseMove = (e: MouseEvent) => {
-            if (!isResizing) return;
-            // ... (existing resize logic skipped for brevity in replace block if possible, but I need to be careful with context)
-            // Actually, I can just insert the state at the top and the button in the header in one go if I include enough context, 
-            // or split it. Splitting is safer. 
-            // Let's just add the state first.
-            // Calculate new width: Window Width - Mouse X
-            // Adding a min-width constraint (e.g., 300px) and max-width (e.g., 800px)
-            const newWidth = document.body.clientWidth - e.clientX;
-            if (newWidth > 300 && newWidth < 800) {
-                setWidth(newWidth);
-            }
-        };
-
-        const handleMouseUp = () => {
-            setIsResizing(false);
-            document.body.style.cursor = 'default';
-        };
-
-        if (isResizing) {
-            window.addEventListener('mousemove', handleMouseMove);
-            window.addEventListener('mouseup', handleMouseUp);
-            document.body.style.cursor = 'col-resize';
-        }
-
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-            document.body.style.cursor = 'default';
-        };
-    }, [isResizing]);
-
-    const startResizing = (e: React.MouseEvent) => {
-        e.preventDefault();
-        setIsResizing(true);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'default';
     };
+  }, [isResizing]);
 
-    const isRunning = status === 'running' || status === 'connecting';
+  const startResizing = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+  };
 
-    return (
-        <div
-            style={{ width: `${width}px` }}
-            className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 shadow-xl z-10 transition-none relative"
-        >
-            {/* Drag Handle */}
-            <div
-                onMouseDown={startResizing}
-                className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400/50 transition-colors z-50 transform -translate-x-1/2"
-                title="Drag to resize"
-            />
+  const isRunning = status === 'running' || status === 'connecting';
 
-            {/* Header */}
-            <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-white dark:bg-zinc-900 h-14">
-                <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
-                    <h2 className="font-semibold text-zinc-800 dark:text-zinc-200 shrink-0">Execution</h2>
+  return (
+    <div
+      style={{ width: `${width}px` }}
+      className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-900 border-l border-zinc-200 dark:border-zinc-800 shadow-xl z-10 transition-none relative"
+    >
+      {/* Drag Handle */}
+      <div
+        onMouseDown={startResizing}
+        className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-blue-400/50 transition-colors z-50 transform -translate-x-1/2"
+        title="Drag to resize"
+      />
 
-                    {/* Active Node Indicator in Header */}
-                    {status === 'running' && useRunStore.getState().activeNodeIds.length > 0 && (
-                        <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 dark:bg-blue-900/40 rounded-full border border-blue-100 dark:border-blue-800/50 min-w-0 animate-in fade-in zoom-in duration-200">
-                            <Loader2 size={12} className="animate-spin text-blue-600 dark:text-blue-400 shrink-0" />
-                            <span className="text-[10px] font-medium text-blue-700 dark:text-blue-300 truncate max-w-[150px]">
-                                {(() => {
-                                    const lastActiveId = useRunStore.getState().activeNodeIds.slice(-1)[0];
-                                    return useRunStore.getState().nodeLabels[lastActiveId] || lastActiveId;
-                                })()}
-                            </span>
-                            <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 border-l border-blue-200 dark:border-blue-700 pl-2 shrink-0">
-                                #{(() => {
-                                    const lastActiveId = useRunStore.getState().activeNodeIds.slice(-1)[0];
-                                    return useRunStore.getState().nodeExecutionCounts[lastActiveId] || 1;
-                                })()}
-                            </span>
-                        </div>
-                    )}
-                </div>
+      {/* Header */}
+      <div className="p-4 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between bg-white dark:bg-zinc-900 h-14">
+        <div className="flex items-center gap-3 min-w-0 flex-1 mr-2">
+          <h2 className="font-semibold text-zinc-800 dark:text-zinc-200 shrink-0">Execution</h2>
 
-                <div className="flex gap-2 shrink-0">
-                    {runId && (
-                        <Link
-                            to={`/debug/${runId}`}
-                            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-500 hover:text-blue-500 transition-colors"
-                            title="Open Deep Observability Console"
-                        >
-                            <Bug size={18} />
-                        </Link>
-                    )}
-                    <button
-                        onClick={() => setShowTraces(!showTraces)}
-                        className={clsx(
-                            "p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors",
-                            showTraces ? "text-indigo-600 dark:text-indigo-400" : "text-zinc-500"
-                        )}
-                        title={showTraces ? "Hide Traces" : "Show Traces"}
-                    >
-                        {showTraces ? <Eye size={18} /> : <EyeOff size={18} />}
-                    </button>
-
-                    <button
-                        onClick={clearSession}
-                        className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-500"
-                        title="Clear Session"
-                        disabled={isRunning}
-                    >
-                        <Eraser size={18} />
-                    </button>
-                </div>
-            </div>
-
-            {/* Chat Area */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={scrollRef}>
-                {messages.length === 0 && (
-                    <div className="text-center text-zinc-400 mt-20 text-sm">
-                        Ready to run. <br /> Enter a message to start the agent.
-                    </div>
-                )}
-
-                {/* Hybrid Layout Rendering */}
+          {/* Active Node Indicator in Header */}
+          {status === 'running' && useRunStore.getState().activeNodeIds.length > 0 && (
+            <div className="flex items-center gap-2 px-2 py-1 bg-blue-50 dark:bg-blue-900/40 rounded-full border border-blue-100 dark:border-blue-800/50 min-w-0 animate-in fade-in zoom-in duration-200">
+              <Loader2
+                size={12}
+                className="animate-spin text-blue-600 dark:text-blue-400 shrink-0"
+              />
+              <span className="text-[10px] font-medium text-blue-700 dark:text-blue-300 truncate max-w-[150px]">
                 {(() => {
-                    const layoutBlocks = groupMessagesForLayout(messages);
-
-                    return layoutBlocks.map((block, blockIdx) => {
-                        if (block.type === 'linear') {
-                            return (
-                                <div key={`block-${blockIdx}`} className="flex flex-col gap-4">
-                                    {block.messages
-                                        .filter(msg => showTraces || msg.role !== 'trace')
-                                        .map((msg) => (
-                                            <ChatMessage key={msg.id} message={msg} />
-                                        ))}
-                                </div>
-                            );
-                        } else {
-                            // Parallel Block
-                            const groups = block.groups;
-                            const nodeIds = Object.keys(groups);
-
-                            return (
-                                <div key={`block-${blockIdx}`} className="flex flex-row gap-4 border-l-4 border-blue-100 dark:border-blue-900/30 pl-2 my-2 bg-blue-50/10 dark:bg-blue-900/5 rounded-r-lg p-2 overflow-x-auto">
-                                    {nodeIds.map((nodeId) => (
-                                        <div key={nodeId} className="flex-1 min-w-[250px] flex flex-col border-r border-zinc-200 dark:border-zinc-800 last:border-0 pr-2">
-                                            <div className="mb-2 text-xs font-bold text-zinc-500 uppercase tracking-wider text-center border-b border-zinc-200 dark:border-zinc-800 pb-1 truncate" title={nodeId}>
-                                                {useRunStore.getState().nodeLabels[nodeId] || nodeId || "Agent"}
-                                            </div>
-                                            <div className="flex-1 space-y-4">
-                                                {groups[nodeId]
-                                                    .filter(msg => showTraces || msg.role !== 'trace')
-                                                    .map(msg => (
-                                                        <ChatMessage key={msg.id} message={msg} />
-                                                    ))}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            );
-                        }
-                    });
+                  const lastActiveId = useRunStore.getState().activeNodeIds.slice(-1)[0];
+                  return useRunStore.getState().nodeLabels[lastActiveId] || lastActiveId;
                 })()}
-
-                {status === 'connecting' && (
-                    <div className="flex items-center gap-2 text-zinc-500 text-sm animate-pulse">
-                        <Loader2 size={14} className="animate-spin" /> Connecting...
-                    </div>
-                )}
+              </span>
+              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 border-l border-blue-200 dark:border-blue-700 pl-2 shrink-0">
+                #
+                {(() => {
+                  const lastActiveId = useRunStore.getState().activeNodeIds.slice(-1)[0];
+                  return useRunStore.getState().nodeExecutionCounts[lastActiveId] || 1;
+                })()}
+              </span>
             </div>
-
-            {/* Paused/Resume Banner */}
-            {status === 'paused' && pausedNodeId && (
-                <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border-t border-orange-200 dark:border-orange-800 flex items-center justify-between animate-in slide-in-from-bottom-2">
-                    <div className="flex flex-col">
-                        <span className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">Waiting for Approval</span>
-                        <span className="text-sm font-medium text-orange-800 dark:text-orange-200">
-                            Paused at {nodeLabels[pausedNodeId] || pausedNodeId}
-                        </span>
-                    </div>
-                    <button
-                        onClick={resume}
-                        className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg shadow-sm transition-colors font-medium text-sm"
-                    >
-                        <Play size={16} fill="currentColor" /> Resume
-                    </button>
-                </div>
-            )}
-
-            {/* Input Area */}
-            <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-                <div className="relative">
-                    <textarea
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        placeholder="Type your instruction..."
-                        className="w-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-24 text-sm"
-                        disabled={isRunning}
-                    />
-                    <button
-                        onClick={handleRun}
-                        disabled={!input.trim() && messages.length === 0 && !isRunning}
-                        className={clsx(
-                            "absolute bottom-3 right-3 p-2 rounded-lg transition-colors",
-                            isRunning
-                                ? "bg-red-500 hover:bg-red-600 text-white"
-                                : "bg-blue-600 hover:bg-blue-700 text-white"
-                        )}
-                    >
-                        {isRunning ? <Square size={18} fill="currentColor" /> : <Play size={18} fill="currentColor" />}
-                    </button>
-                </div>
-            </div>
+          )}
         </div>
-    );
+
+        <div className="flex gap-2 shrink-0">
+          {runId && (
+            <Link
+              to={`/debug/${runId}`}
+              className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-500 hover:text-blue-500 transition-colors"
+              title="Open Deep Observability Console"
+            >
+              <Bug size={18} />
+            </Link>
+          )}
+          <button
+            onClick={() => setShowTraces(!showTraces)}
+            className={clsx(
+              'p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md transition-colors',
+              showTraces ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500'
+            )}
+            title={showTraces ? 'Hide Traces' : 'Show Traces'}
+          >
+            {showTraces ? <Eye size={18} /> : <EyeOff size={18} />}
+          </button>
+
+          <button
+            onClick={clearSession}
+            className="p-2 hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-md text-zinc-500"
+            title="Clear Session"
+            disabled={isRunning}
+          >
+            <Eraser size={18} />
+          </button>
+        </div>
+      </div>
+
+      {/* Chat Area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={scrollRef}>
+        {messages.length === 0 && (
+          <div className="text-center text-zinc-400 mt-20 text-sm">
+            Ready to run. <br /> Enter a message to start the agent.
+          </div>
+        )}
+
+        {/* Hybrid Layout Rendering */}
+        {(() => {
+          const layoutBlocks = groupMessagesForLayout(messages);
+
+          return layoutBlocks.map((block, blockIdx) => {
+            if (block.type === 'linear') {
+              return (
+                <div key={`block-${blockIdx}`} className="flex flex-col gap-4">
+                  {block.messages
+                    .filter((msg) => showTraces || msg.role !== 'trace')
+                    .map((msg) => (
+                      <ChatMessage key={msg.id} message={msg} />
+                    ))}
+                </div>
+              );
+            } else {
+              // Parallel Block
+              const groups = block.groups;
+              const nodeIds = Object.keys(groups);
+
+              return (
+                <div
+                  key={`block-${blockIdx}`}
+                  className="flex flex-row gap-4 border-l-4 border-blue-100 dark:border-blue-900/30 pl-2 my-2 bg-blue-50/10 dark:bg-blue-900/5 rounded-r-lg p-2 overflow-x-auto"
+                >
+                  {nodeIds.map((nodeId) => (
+                    <div
+                      key={nodeId}
+                      className="flex-1 min-w-[250px] flex flex-col border-r border-zinc-200 dark:border-zinc-800 last:border-0 pr-2"
+                    >
+                      <div
+                        className="mb-2 text-xs font-bold text-zinc-500 uppercase tracking-wider text-center border-b border-zinc-200 dark:border-zinc-800 pb-1 truncate"
+                        title={nodeId}
+                      >
+                        {useRunStore.getState().nodeLabels[nodeId] || nodeId || 'Agent'}
+                      </div>
+                      <div className="flex-1 space-y-4">
+                        {groups[nodeId]
+                          .filter((msg) => showTraces || msg.role !== 'trace')
+                          .map((msg) => (
+                            <ChatMessage key={msg.id} message={msg} />
+                          ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            }
+          });
+        })()}
+
+        {status === 'connecting' && (
+          <div className="flex items-center gap-2 text-zinc-500 text-sm animate-pulse">
+            <Loader2 size={14} className="animate-spin" /> Connecting...
+          </div>
+        )}
+      </div>
+
+      {/* Paused/Resume Banner */}
+      {status === 'paused' && pausedNodeId && (
+        <div className="p-3 bg-orange-50 dark:bg-orange-900/20 border-t border-orange-200 dark:border-orange-800 flex items-center justify-between animate-in slide-in-from-bottom-2">
+          <div className="flex flex-col">
+            <span className="text-xs font-bold text-orange-600 dark:text-orange-400 uppercase tracking-wider">
+              Waiting for Approval
+            </span>
+            <span className="text-sm font-medium text-orange-800 dark:text-orange-200">
+              Paused at {nodeLabels[pausedNodeId] || pausedNodeId}
+            </span>
+          </div>
+          <button
+            onClick={resume}
+            className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg shadow-sm transition-colors font-medium text-sm"
+          >
+            <Play size={16} fill="currentColor" /> Resume
+          </button>
+        </div>
+      )}
+
+      {/* Input Area */}
+      <div className="p-4 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+        <div className="relative">
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your instruction..."
+            className="w-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 rounded-xl px-4 py-3 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none h-24 text-sm"
+            disabled={isRunning}
+          />
+          <button
+            onClick={handleRun}
+            disabled={!input.trim() && messages.length === 0 && !isRunning}
+            className={clsx(
+              'absolute bottom-3 right-3 p-2 rounded-lg transition-colors',
+              isRunning
+                ? 'bg-red-500 hover:bg-red-600 text-white'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'
+            )}
+          >
+            {isRunning ? (
+              <Square size={18} fill="currentColor" />
+            ) : (
+              <Play size={18} fill="currentColor" />
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }

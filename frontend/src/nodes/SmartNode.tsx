@@ -12,212 +12,231 @@ import { toast } from 'sonner';
 type SmartNodeType = Node<SmartNodeData>;
 
 export function SmartNode({ id, data, selected }: NodeProps<SmartNodeType>) {
-    const { updateNodeData } = useReactFlow();
-    const activeNodeId = useRunStore((state) => state.activeNodeId);
-    const isActive = id === activeNodeId;
-    const [configOpen, setConfigOpen] = useState(false);
-    const [infoOpen, setInfoOpen] = useState(false);
+  const { updateNodeData } = useReactFlow();
+  const activeNodeIds = useRunStore((state) => state.activeNodeIds);
+  const isActive = activeNodeIds.includes(id);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
 
-    // Template Versioning State
-    const [versions, setVersions] = useState<AgentTemplateVersion[]>([]);
-    const [versionsLoading, setVersionsLoading] = useState(false);
-    const isTemplate = !!data._templateId;
+  // Template Versioning State
+  const [versions, setVersions] = useState<AgentTemplateVersion[]>([]);
+  const [versionsLoading, setVersionsLoading] = useState(false);
+  const isTemplate = !!data._templateId;
 
-    const mode = (data.mode as SmartNodeMode) || "ChainOfThought"; // Default
-    const inputs = data.inputs || [];
-    const outputs = data.outputs || [];
+  const mode = (data.mode as SmartNodeMode) || 'ChainOfThought'; // Default
+  const inputs = data.inputs || [];
+  const outputs = data.outputs || [];
 
-    // Fetch versions if this is a template node
-    useEffect(() => {
-        if (isTemplate && data._templateId) {
-            const loadVersions = async () => {
-                try {
-                    setVersionsLoading(true);
-                    const v = await templateApi.getVersions(data._templateId!);
-                    setVersions(v.sort((a, b) => b.version_number - a.version_number));
-                } catch (e) {
-                    console.error("Failed to load versions", e);
-                } finally {
-                    setVersionsLoading(false);
-                }
-            };
-            loadVersions();
+  // Fetch versions if this is a template node
+  useEffect(() => {
+    if (isTemplate && data._templateId) {
+      const loadVersions = async () => {
+        try {
+          setVersionsLoading(true);
+          const v = await templateApi.getVersions(data._templateId!);
+          setVersions(v.sort((a, b) => b.version_number - a.version_number));
+        } catch (e) {
+          console.error('Failed to load versions', e);
+        } finally {
+          setVersionsLoading(false);
         }
-    }, [isTemplate, data._templateId]);
+      };
+      loadVersions();
+    }
+  }, [isTemplate, data._templateId]);
 
-    const handleVersionChange = (versionId: string) => {
-        const version = versions.find(v => v.id.toString() === versionId);
-        if (!version) return;
+  const handleVersionChange = (versionId: string) => {
+    const version = versions.find((v) => v.id.toString() === versionId);
+    if (!version) return;
 
-        if (confirm(`Apply version ${version.version_number}? This will overwrite current settings.`)) {
-            try {
-                const config = JSON.parse(version.config);
-                // Map config back to SmartNodeData
+    if (confirm(`Apply version ${version.version_number}? This will overwrite current settings.`)) {
+      try {
+        const config = JSON.parse(version.config);
+        // Map config back to SmartNodeData
 
-                const updates: Partial<SmartNodeData> = {
-                    _templateVersion: version.version_number,
-                    goal: config.goal,
-                    mode: config.mode,
-                    inputs: config.inputs,
-                    outputs: config.outputs,
-                    // Smart Node specific overrides if needed
-                };
+        const updates: Partial<SmartNodeData> = {
+          _templateVersion: version.version_number,
+          goal: config.goal,
+          mode: config.mode,
+          inputs: config.inputs,
+          outputs: config.outputs,
+          // Smart Node specific overrides if needed
+        };
 
-                updateNodeData(id, updates);
-                toast.success(`Restored version ${version.version_number}`);
-            } catch (e) {
-                console.error("Failed to apply version", e);
-                toast.error("Failed to apply version config");
-            }
-        }
-    };
+        updateNodeData(id, updates);
+        toast.success(`Restored version ${version.version_number}`);
+      } catch (e) {
+        console.error('Failed to apply version', e);
+        toast.error('Failed to apply version config');
+      }
+    }
+  };
 
-    return (
-        <>
-            <div
-                className={twMerge(
-                    'bg-white border-2 rounded-xl w-72 shadow-sm transition-all duration-300 group',
-                    selected ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-md' : 'border-slate-200 hover:border-slate-300',
-                    isActive && 'border-green-500 ring-4 ring-green-500/20 shadow-xl scale-105'
-                )}
-            >
-                {/* Header */}
-                <div className="flex items-center gap-3 p-3 border-b border-amber-100 bg-gradient-to-b from-amber-50/50 to-amber-100/30 rounded-t-xl">
-                    <div className={twMerge(
-                        "p-2 rounded-lg transition-colors bg-amber-100 text-amber-600"
-                    )}>
-                        <Sparkles size={18} />
+  return (
+    <>
+      <div
+        className={twMerge(
+          'bg-white border-2 rounded-xl w-72 shadow-sm transition-all duration-300 group',
+          selected
+            ? 'border-amber-500 ring-2 ring-amber-500/20 shadow-md'
+            : 'border-slate-200 hover:border-slate-300',
+          isActive && 'border-green-500 ring-4 ring-green-500/20 shadow-xl scale-105'
+        )}
+      >
+        {/* Header */}
+        <div className="flex items-center gap-3 p-3 border-b border-amber-100 bg-gradient-to-b from-amber-50/50 to-amber-100/30 rounded-t-xl">
+          <div className={twMerge('p-2 rounded-lg transition-colors bg-amber-100 text-amber-600')}>
+            <Sparkles size={18} />
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <input
+                  className="font-bold text-slate-800 bg-transparent border-none p-0 focus:ring-0 w-full text-sm truncate placeholder:text-slate-400"
+                  value={String(data.label || 'Smart Node')}
+                  onChange={(e) => updateNodeData(id, { label: e.target.value })}
+                  placeholder="Smart Node"
+                />
+                <span className="text-[9px] font-bold bg-amber-200 text-amber-700 px-1 py-0.5 rounded uppercase tracking-wide flex-shrink-0">
+                  kBeta
+                </span>
+              </div>
+
+              {/* Version Selector */}
+              {isTemplate && (
+                <div className="flex-shrink-0 relative">
+                  {versionsLoading ? (
+                    <Loader2 size={12} className="animate-spin text-slate-400" />
+                  ) : (
+                    <div className="flex items-center gap-1 bg-amber-50/50 rounded px-1.5 py-0.5 border border-amber-100/50">
+                      <History size={10} className="text-amber-600/50" />
+                      <select
+                        className="bg-transparent text-[10px] font-medium text-amber-800 outline-none border-none p-0 w-auto cursor-pointer appearance-none hover:text-amber-600"
+                        value={
+                          data._templateVersion
+                            ? versions.find((v) => v.version_number === data._templateVersion)
+                                ?.id || ''
+                            : ''
+                        }
+                        onChange={(e) => handleVersionChange(e.target.value)}
+                        title="Select Template Version"
+                      >
+                        <option value="" disabled>
+                          v{data._templateVersion || '??'}
+                        </option>
+                        {versions.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            v{v.version_number}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                                <input
-                                    className="font-bold text-slate-800 bg-transparent border-none p-0 focus:ring-0 w-full text-sm truncate placeholder:text-slate-400"
-                                    value={String(data.label || "Smart Node")}
-                                    onChange={(e) => updateNodeData(id, { label: e.target.value })}
-                                    placeholder="Smart Node"
-                                />
-                                <span className="text-[9px] font-bold bg-amber-200 text-amber-700 px-1 py-0.5 rounded uppercase tracking-wide flex-shrink-0">kBeta</span>
-                            </div>
-
-                            {/* Version Selector */}
-                            {isTemplate && (
-                                <div className="flex-shrink-0 relative">
-                                    {versionsLoading ? (
-                                        <Loader2 size={12} className="animate-spin text-slate-400" />
-                                    ) : (
-                                        <div className="flex items-center gap-1 bg-amber-50/50 rounded px-1.5 py-0.5 border border-amber-100/50">
-                                            <History size={10} className="text-amber-600/50" />
-                                            <select
-                                                className="bg-transparent text-[10px] font-medium text-amber-800 outline-none border-none p-0 w-auto cursor-pointer appearance-none hover:text-amber-600"
-                                                value={data._templateVersion ? versions.find(v => v.version_number === data._templateVersion)?.id || '' : ''}
-                                                onChange={(e) => handleVersionChange(e.target.value)}
-                                                title="Select Template Version"
-                                            >
-                                                <option value="" disabled>v{data._templateVersion || '??'}</option>
-                                                {versions.map(v => (
-                                                    <option key={v.id} value={v.id}>
-                                                        v{v.version_number}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
-                            {mode === 'ChainOfThought' ? <Brain size={10} /> : <Zap size={10} />}
-                            <span className="truncate">{mode === 'ChainOfThought' ? "Reasoning Mode" : "Predict Mode"}</span>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                        <button
-                            onClick={() => setInfoOpen(true)}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
-                            title="Technical Info"
-                        >
-                            <Info size={16} />
-                        </button>
-                        <button
-                            onClick={() => setConfigOpen(true)}
-                            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
-                        >
-                            <Settings2 size={16} />
-                        </button>
-                    </div>
+                  )}
                 </div>
-
-                {/* Body Summary */}
-                <div className="p-3">
-                    {/* Goal/Instructions Snippet */}
-                    <div
-                        className="text-xs text-slate-600 italic border-l-2 border-amber-200 pl-2 py-1 mb-3 bg-slate-50/50 rounded-r line-clamp-3 overflow-hidden text-ellipsis"
-                        title={String(data.goal || '')}
-                    >
-                        &quot;{String(data.goal || 'Define a goal...')}&quot;
-                    </div>
-
-                    {/* Signature Viz */}
-                    <div className="flex gap-2 text-[10px] font-mono">
-                        <div className="flex-1 bg-blue-50 border border-blue-100 rounded px-2 py-1">
-                            <div className="uppercase text-blue-400 font-bold mb-1 flex items-center gap-1">
-                                Inputs
-                            </div>
-                            <div className="flex flex-col gap-0.5 text-slate-700">
-                                {inputs.length > 0 ? inputs.map((i, idx) => (
-                                    <span key={idx} className="truncate">• {i.name}</span>
-                                )) : <span className="text-slate-400 opacity-50">None</span>}
-                            </div>
-                        </div>
-
-                        <div className="flex items-center text-slate-300">→</div>
-
-                        <div className="flex-1 bg-green-50 border border-green-100 rounded px-2 py-1">
-                            <div className="uppercase text-green-500 font-bold mb-1 flex items-center gap-1">
-                                Outputs
-                            </div>
-                            <div className="flex flex-col gap-0.5 text-slate-700">
-                                {outputs.length > 0 ? outputs.map((o, idx) => (
-                                    <span key={idx} className="truncate">• {o.name}</span>
-                                )) : <span className="text-slate-400 opacity-50">None</span>}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Handles */}
-                <div className="absolute -left-3 top-1/2 -translate-y-4 flex items-center">
-                    <Handle
-                        type="target"
-                        position={Position.Left}
-                        className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white transition-transform hover:scale-125"
-                    />
-                </div>
-                <div className="absolute -right-3 top-1/2 -translate-y-4 flex items-center">
-                    <Handle
-                        type="source"
-                        position={Position.Right}
-                        className="!w-3 !h-3 !bg-green-500 !border-2 !border-white transition-transform hover:scale-125"
-                    />
-                </div>
+              )}
             </div>
 
-            <SmartNodeConfigDialog
-                open={configOpen}
-                onOpenChange={setConfigOpen}
-                data={{ ...data, id }}
-                onUpdate={(updates) => updateNodeData(id, updates)}
-            />
+            <div className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-0.5">
+              {mode === 'ChainOfThought' ? <Brain size={10} /> : <Zap size={10} />}
+              <span className="truncate">
+                {mode === 'ChainOfThought' ? 'Reasoning Mode' : 'Predict Mode'}
+              </span>
+            </div>
+          </div>
 
-            <TechnicalInfoDialog
-                open={infoOpen}
-                onOpenChange={setInfoOpen}
-                data={{ ...data, id }}
-            />
-        </>
-    );
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setInfoOpen(true)}
+              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+              title="Technical Info"
+            >
+              <Info size={16} />
+            </button>
+            <button
+              onClick={() => setConfigOpen(true)}
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
+            >
+              <Settings2 size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Body Summary */}
+        <div className="p-3">
+          {/* Goal/Instructions Snippet */}
+          <div
+            className="text-xs text-slate-600 italic border-l-2 border-amber-200 pl-2 py-1 mb-3 bg-slate-50/50 rounded-r line-clamp-3 overflow-hidden text-ellipsis"
+            title={String(data.goal || '')}
+          >
+            &quot;{String(data.goal || 'Define a goal...')}&quot;
+          </div>
+
+          {/* Signature Viz */}
+          <div className="flex gap-2 text-[10px] font-mono">
+            <div className="flex-1 bg-blue-50 border border-blue-100 rounded px-2 py-1">
+              <div className="uppercase text-blue-400 font-bold mb-1 flex items-center gap-1">
+                Inputs
+              </div>
+              <div className="flex flex-col gap-0.5 text-slate-700">
+                {inputs.length > 0 ? (
+                  inputs.map((i, idx) => (
+                    <span key={idx} className="truncate">
+                      • {i.name}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-slate-400 opacity-50">None</span>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center text-slate-300">→</div>
+
+            <div className="flex-1 bg-green-50 border border-green-100 rounded px-2 py-1">
+              <div className="uppercase text-green-500 font-bold mb-1 flex items-center gap-1">
+                Outputs
+              </div>
+              <div className="flex flex-col gap-0.5 text-slate-700">
+                {outputs.length > 0 ? (
+                  outputs.map((o, idx) => (
+                    <span key={idx} className="truncate">
+                      • {o.name}
+                    </span>
+                  ))
+                ) : (
+                  <span className="text-slate-400 opacity-50">None</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Handles */}
+        <div className="absolute -left-3 top-1/2 -translate-y-4 flex items-center">
+          <Handle
+            type="target"
+            position={Position.Left}
+            className="!w-3 !h-3 !bg-blue-500 !border-2 !border-white transition-transform hover:scale-125"
+          />
+        </div>
+        <div className="absolute -right-3 top-1/2 -translate-y-4 flex items-center">
+          <Handle
+            type="source"
+            position={Position.Right}
+            className="!w-3 !h-3 !bg-green-500 !border-2 !border-white transition-transform hover:scale-125"
+          />
+        </div>
+      </div>
+
+      <SmartNodeConfigDialog
+        open={configOpen}
+        onOpenChange={setConfigOpen}
+        data={{ ...data, id }}
+        onUpdate={(updates) => updateNodeData(id, updates)}
+      />
+
+      <TechnicalInfoDialog open={infoOpen} onOpenChange={setInfoOpen} data={{ ...data, id }} />
+    </>
+  );
 }
