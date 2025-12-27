@@ -47,9 +47,15 @@ class GenericAgentNode:
                      raise ValueError(f"Node {self.node_id} has no profile_id configured and no default found.")
              except Exception:
                  raise ValueError(f"Node {self.node_id} has no profile_id configured")
-             
-        profile = get_llm_profile(self.profile_id)
-        llm = create_llm_instance(profile)
+        
+        # Agent execution happens outside HTTP request context, so we create a session
+        # This session is short-lived and scoped to this node execution
+        from app.database import engine
+        from sqlmodel import Session
+        
+        with Session(engine) as session:
+            profile = get_llm_profile(self.profile_id, session)
+            llm = create_llm_instance(profile)
         
         # Prepare messages
         invocation_messages = messages

@@ -9,7 +9,9 @@ Central mapping of "Frontend Node Types" to "Backend Python Classes".
 NODE_REGISTRY = {
     "agent": GenericAgentNode,
     "tool": ToolNode,
+    "tool": ToolNode,
     "smart_node": SmartNode,
+    "rag_node": RAGNode,
     # ...
 }
 ```
@@ -70,7 +72,23 @@ Manages looping over a list of items.
     3.  **State Update**: Writes the current item and updated queue to `context` (using overwrite reducer to prevent list explosion).
     4.  Returns `_signal="NEXT"` or `"COMPLETE"`.
 
-## 5. Smart Node (`smart_node.py`)
+## 6. RAG Node (`rag_node.py`)
+
+### `RAGNode`
+Smart Retrieval-Augmented Generation node with Read/Write capabilities.
+
+#### `__init__(..., config: dict)`
+*   `config`:
+    *   `action` (str): "read" (default) or "write".
+    *   `chroma` (dict): `ChromaNodeConfig` settings (`mode`, `path`/`host`, `collection`).
+
+#### `__call__(state: GraphState)`
+*   **Logic**:
+    *   **Read**: Calls `rag_service.search`. Returns `SystemMessage` with context + `rag_context` key.
+    *   **Write**: Calls `rag_service.ingest_text`. Returns status.
+    *   **Inputs**: prioritized `state.get("query")` -> `state.get("content")` -> `messages[-1].content`.
+
+## 7. Smart Node (`smart_node.py`)
 
 ### `SmartNode`
 Advanced node using **DSPy** for optimizeable tasks ("Predict", "ChainOfThought").

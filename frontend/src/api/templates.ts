@@ -19,7 +19,7 @@ export const templateApi = {
     return response.data;
   },
 
-  create: async (template: AgentTemplate): Promise<AgentTemplate> => {
+  create: async (template: Partial<AgentTemplate>): Promise<AgentTemplate> => {
     const response = await axios.post(`${API_URL}/agent-templates`, template);
     return response.data;
   },

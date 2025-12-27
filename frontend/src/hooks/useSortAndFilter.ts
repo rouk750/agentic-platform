@@ -10,7 +10,7 @@ interface SortAndFilterOptions<T> {
 }
 
 export function useSortAndFilter<
-  T extends { is_archived?: boolean; updated_at?: string; name: string },
+  T extends { is_archived?: boolean; updated_at?: string | null; name: string },
 >({ items, filterPredicate, sortComparator }: SortAndFilterOptions<T>) {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('active');
   const [sortBy, setSortBy] = useState<SortOption>('updated_desc');

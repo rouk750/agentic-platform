@@ -17,13 +17,17 @@ logger = get_logger(__name__)
 # Map: tool_name -> tool_instance
 _TOOL_REGISTRY: Dict[str, BaseTool] = {}
 _MCP_MANAGER: MCPClientManager | None = None
+_INITIALIZED: bool = False
 
 async def load_tools():
     """
     Scans the 'app.tools_library' package for tools AND loads MCP tools.
     """
-    global _TOOL_REGISTRY, _MCP_MANAGER
+    global _TOOL_REGISTRY, _MCP_MANAGER, _INITIALIZED
     
+    if _INITIALIZED:
+        return
+
     # 1. Load Local Tools
     package_name = "app.tools_library"
     import app.tools_library
@@ -68,6 +72,7 @@ async def load_tools():
         # Continue so local tools are still available
 
     logger.info("tools_loaded", count=len(_TOOL_REGISTRY), tools=list(_TOOL_REGISTRY.keys()))
+    _INITIALIZED = True
 
 
 async def cleanup_tools():
@@ -76,21 +81,43 @@ async def cleanup_tools():
         await _MCP_MANAGER.cleanup()
 
 async def list_tools_metadata() -> List[Dict[str, str]]:
-    if not _TOOL_REGISTRY:
+    if not _INITIALIZED:
         await load_tools()
         
     result = []
     for name, tool in _TOOL_REGISTRY.items():
-        result.append({
+        meta = {
             "id": name,
             "name": name,
             "description": tool.description,
-            "type": "tool"
-        })
+            "type": "tool",
+            "source": "local",
+            "server": "Standard Tools"
+        }
+        
+        # Check if MCP Tool
+        if isinstance(tool, MCPLangChainTool):
+            meta["source"] = "mcp"
+            meta["server"] = tool.server_name
+            
+        result.append(meta)
     return result
 
 async def get_tool(tool_id: str) -> BaseTool | None:
-    if not _TOOL_REGISTRY:
+    if not _INITIALIZED:
         await load_tools()
     return _TOOL_REGISTRY.get(tool_id)
 
+
+def register_rag_tools(tools: List[BaseTool]):
+    """
+    Register RAG tools dynamically during graph compilation.
+    This allows RAG tools to be resolved by agents without pre-loading.
+    
+    Args:
+        tools: List of RAG tools (StructuredTool instances)
+    """
+    global _TOOL_REGISTRY
+    for tool in tools:
+        _TOOL_REGISTRY[tool.name] = tool
+        logger.debug("rag_tool_registered", tool_name=tool.name)

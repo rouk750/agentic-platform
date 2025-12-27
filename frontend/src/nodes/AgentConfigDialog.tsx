@@ -97,6 +97,7 @@ export function AgentConfigDialog({ open, onOpenChange, data, onUpdate }: AgentC
     }
   };
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const isFlexible = watch('flexible_mode');
 
   return (

@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { flowApi, Flow } from '../api/flows';
+import { flowApi, type Flow } from '../api/flows';
 import {
   Trash2,
   History,
@@ -18,7 +18,7 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { useApiResource } from '../hooks/useApiResource';
 import { useVersionHistory } from '../hooks/useVersionHistory';
-import { useSortAndFilter, SortOption } from '../hooks/useSortAndFilter';
+import { useSortAndFilter, type SortOption } from '../hooks/useSortAndFilter';
 
 interface FlowVersion {
   id: number;
@@ -125,7 +125,8 @@ export default function FlowsPage() {
   };
 
   const handleToggleArchive = async (flow: Flow) => {
-    await updateFlow(flow.id!, { ...flow, is_archived: !flow.is_archived });
+    if (!flow.id) return;
+    await updateFlow(flow.id, { ...flow, is_archived: !flow.is_archived });
   };
 
   // Filter and Sort Logic - Now handled by useSortAndFilter hook
@@ -280,7 +281,7 @@ export default function FlowsPage() {
                       {flow.is_archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
                     </button>
                     <button
-                      onClick={() => handleViewVersionsClick(flow.id!)}
+                      onClick={() => flow.id && handleViewVersionsClick(flow.id)}
                       className={`p-2 rounded-lg transition-colors flex items-center gap-1.5 text-sm font-medium ${selectedFlowId === flow.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}
                     >
                       <History size={16} />
@@ -294,7 +295,7 @@ export default function FlowsPage() {
                       <span className="flex items-center gap-1.5 text-sm font-medium">Edit</span>
                     </button>
                     <button
-                      onClick={() => handleDeleteFlow(flow.id!)}
+                      onClick={() => flow.id && handleDeleteFlow(flow.id)}
                       className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
                       title="Delete Flow"
                     >
@@ -340,7 +341,7 @@ export default function FlowsPage() {
                                   ({selectedVersionIds.size})
                                 </span>
                                 <button
-                                  onClick={() => handleBulkDelete(flow.id!)}
+                                  onClick={() => flow.id && handleBulkDelete(flow.id)}
                                   className="flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded-md text-xs font-medium transition-colors"
                                 >
                                   <Trash2 size={12} /> Delete
@@ -411,7 +412,9 @@ export default function FlowsPage() {
                               <div className="flex items-center gap-1">
                                 {!isActive && (
                                   <button
-                                    onClick={() => handleRestoreVersion(flow.id!, version.id)}
+                                    onClick={() =>
+                                      flow.id && handleRestoreVersion(flow.id, version.id)
+                                    }
                                     className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-blue-50 text-blue-600 rounded-md transition-colors text-xs font-medium border border-transparent hover:border-blue-100"
                                   >
                                     <RotateCcw size={14} /> Restore
@@ -424,7 +427,7 @@ export default function FlowsPage() {
                                 )}
 
                                 <button
-                                  onClick={() => handleToggleLock(flow.id!, version)}
+                                  onClick={() => flow.id && handleToggleLock(flow.id, version)}
                                   className={`p-1.5 rounded-md transition-colors ${version.is_locked ? 'text-amber-600 hover:bg-amber-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
                                   title={version.is_locked ? 'Unlock Version' : 'Lock Version'}
                                 >
@@ -432,7 +435,9 @@ export default function FlowsPage() {
                                 </button>
 
                                 <button
-                                  onClick={() => handleDeleteVersionClick(flow.id!, version.id)}
+                                  onClick={() =>
+                                    flow.id && handleDeleteVersionClick(flow.id, version.id)
+                                  }
                                   disabled={version.is_locked || isActive}
                                   className={`p-1.5 rounded-md transition-colors ${version.is_locked || isActive ? 'text-slate-300 cursor-not-allowed' : 'text-slate-400 hover:text-red-500 hover:bg-red-50'}`}
                                   title={

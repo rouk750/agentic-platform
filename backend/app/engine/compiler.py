@@ -151,6 +151,10 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
         else:
              logger.warning("unknown_node_type", node_id=node_id, node_type=node_type)
     
+    # [FEATURE] RAG Tools - Collect and bind to agents
+    from app.engine.rag_compiler import collect_and_bind_rag_tools
+    collect_and_bind_rag_tools(nodes, edges, node_map)
+    
     # 2. Add Edges
     # We need to group edges by source to detect conditional branching.
     # If a source has multiple outgoing edges, it's a conditional node -> router needed.
@@ -227,6 +231,78 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
                  # Fallback 3: Just the first node
                  workflow.add_edge(START, nodes[0]['id'])
 
+    # [FEATURE] Implicit Tool Execution (Tool Unification)
+    # Detect Agents that have tools configured (including auto-injected RAG tools)
+    # but NO outgoing 'tool-call' edges. For these agents, we auto-create a ToolNode and loop it back.
+    
+    # 1. Identify "Orphan Tool" Agents
+    implicit_tool_agents = []
+    
+    for node in nodes:
+        if node.get('type') == 'agent':
+            nid = node['id']
+            # Check if has tools
+            has_tools = len(node.get('data', {}).get('tools', [])) > 0
+            
+            # Check if has explicit outgoing tool-call connection
+            has_generic_tool_executor = False
+            if nid in adjacency:
+                for t in adjacency[nid]:
+                    if t['handle'] == 'tool-call':
+                        # Check target type
+                        target_node = node_map.get(t['target'])
+                        if target_node and target_node.get('type') == 'tool':
+                             has_generic_tool_executor = True
+                             break
+            
+            if has_tools and not has_generic_tool_executor:
+                implicit_tool_agents.append(nid)
+                logger.debug("implicit_tool_execution_detected", agent_id=nid, tool_count=len(node.get('data', {}).get('tools', [])))
+
+    # 2. Inject Implicit Tool Nodes & Routing
+    for agent_id in implicit_tool_agents:
+        implicit_node_id = f"implicit_tool_exec_{agent_id}"
+        
+        # Create ToolNode
+        tool_node = ToolNode(implicit_node_id, {"label": f"Implicit Executor for {agent_id}"})
+        workflow.add_node(implicit_node_id, tool_node)
+        
+        # Add Loopback Edge (Tool -> Agent)
+        # This allows the tool result to go back to the agent
+        workflow.add_edge(implicit_node_id, agent_id)
+        
+        # We need to add this new node_id to node_ids so standard edge processing (if any) doesn't crash?
+        # Actually it's fine, it's internal. But we need to update 'adjacency' or handle routing manually below.
+        # We'll handle routing manually by verifying if we need to add conditional edge here or let Step 3 handle it.
+        # Step 3 iterates 'adjacency'. Since implicit tools HAVE NO adjacency entries, we must add the routing logic here.
+        
+        # Create Routing Logic (Agent -> ImplicitNode)
+        def route_implicit(state, config=None, target=implicit_node_id):
+            messages = state.get('messages', [])
+            if messages and hasattr(messages[-1], 'tool_calls') and messages[-1].tool_calls:
+                return target
+            return END # Should fallback to default edge logic (which might be END or another node)
+
+        # However, standard Agent node might have OTHER outgoing edges (default flow).
+        # We must integrate into the standard routing block or force it here.
+        # Problem: 'workflow.add_conditional_edges' replaces or appends? It appends usually.
+        # But wait, we iterate 'adjacency' later. The Agent is in 'adjacency' if it has default edges.
+        
+        # STRATEGY: We will MODIFY 'adjacency' to pretend there is a tool-call edge to this implicit node.
+        if agent_id not in adjacency:
+            adjacency[agent_id] = []
+        
+        # Inject a virtual edge
+        adjacency[agent_id].append({
+            "target": implicit_node_id,
+            "handle": "tool-call",
+            "implicit": True # Marker
+        })
+        
+        # Also, we need to register the implicit node as a valid node for validation checks
+        node_ids.add(implicit_node_id)
+        node_map[implicit_node_id] = {"id": implicit_node_id, "type": "tool", "data": {}} # Mock data
+
     # Process edges for registered nodes
     for source_id, targets in adjacency.items():
         # Only process edges starting from valid nodes
@@ -257,14 +333,23 @@ def compile_graph(graph_data: Dict[str, Any], checkpointer: Optional[BaseCheckpo
                 # Priority 2: The Node ID (fallback)
                 potential_names = []
                 if t_node:
-                    label = t_node.get('data', {}).get('label')
+                    t_data = t_node.get('data', {})
+                    label = t_data.get('label')
                     if label:
                         potential_names.append(label) # Raw label
                         potential_names.append(sanitize_label(label)) # Sanitized
                         potential_names.append(sanitize_label(label).lower()) # Lowercase sanitized
                     
                     potential_names.append(t_id) # ID
-                
+                    
+                    # [FIX] Special Handling for RAG Nodes (Map tool names to RAG Node)
+                    if t_node.get('type') == 'rag':
+                        collection = t_data.get('chroma', {}).get('collection_name', 'default')
+                        # Sanitize collection name as done in rag_tools.py
+                        clean_col = re.sub(r'[^a-zA-Z0-9_-]', '_', collection)
+                        potential_names.append(f"rag_search_{clean_col}")
+                        potential_names.append(f"rag_ingest_{clean_col}")
+
                 # Register this target for all potential names
                 for name in potential_names:
                      tool_call_targets[name] = t_id

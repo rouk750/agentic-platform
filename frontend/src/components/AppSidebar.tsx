@@ -1,48 +1,39 @@
 import { NavLink } from 'react-router-dom';
-import {
-  LayoutGrid,
-  Box,
-  Palette,
-  Info,
-  GitFork,
-  ChevronDown,
-  ChevronRight,
-  RefreshCw,
-  Settings,
-} from 'lucide-react';
+import { LayoutGrid, Box, Palette, Info, GitFork, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import clsx from 'clsx';
 
+// Moved NavItem outside to avoid re-creation during render
+const NavItem = ({
+  to,
+  icon: Icon,
+  label,
+  className,
+}: {
+  to: string;
+  icon: any;
+  label: string;
+  className?: string;
+}) => (
+  <NavLink
+    to={to}
+    className={({ isActive }) =>
+      clsx(
+        'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+        isActive
+          ? 'bg-blue-50 text-blue-600'
+          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+        className
+      )
+    }
+  >
+    <Icon size={18} />
+    <span>{label}</span>
+  </NavLink>
+);
+
 export default function AppSidebar() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
-
-  const NavItem = ({
-    to,
-    icon: Icon,
-    label,
-    className,
-  }: {
-    to: string;
-    icon: any;
-    label: string;
-    className?: string;
-  }) => (
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        clsx(
-          'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
-          isActive
-            ? 'bg-blue-50 text-blue-600'
-            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
-          className
-        )
-      }
-    >
-      <Icon size={18} />
-      <span>{label}</span>
-    </NavLink>
-  );
 
   return (
     <aside className="w-64 h-full bg-white border-r border-slate-200 flex flex-col flex-shrink-0">

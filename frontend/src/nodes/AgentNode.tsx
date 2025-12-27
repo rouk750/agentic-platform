@@ -19,6 +19,9 @@ import { AgentConfigDialog } from './AgentConfigDialog';
 import { TechnicalInfoDialog } from './TechnicalInfoDialog';
 import { templateApi, type AgentTemplateVersion } from '../api/templates';
 import { toast } from 'sonner';
+import * as Popover from '@radix-ui/react-popover';
+import { ChevronDown, Activity, Play } from 'lucide-react';
+import type { LogEntry } from '../types/execution';
 
 type AgentNodeType = Node<AgentNodeData>;
 
@@ -26,6 +29,21 @@ export function AgentNode({ id, data, selected }: NodeProps<AgentNodeType>) {
   const { updateNodeData } = useReactFlow();
   const activeNodeIds = useRunStore((state) => state.activeNodeIds);
   const isActive = activeNodeIds.includes(id);
+
+  // [FEATURE] Real-time Tool Monitoring
+  const currentToolName = useRunStore((state) => state.currentToolName);
+  // We assume the global 'currentToolName' belongs to the active node.
+  // Ideally, store should track 'currentToolByNode', but for single-thread exec, this is fine if we are active.
+  const isRunningTool = isActive && !!currentToolName;
+
+  // [FEATURE] Tool History
+  const logs = useRunStore((state) => state.logs);
+  // Filter logs for this node that are tool-related
+  const toolLogs = logs.filter(
+    (l: LogEntry) =>
+      l.details?.nodeId === id && (l.event === 'Tool Execution' || l.event.includes('Tool'))
+  );
+
   const [configOpen, setConfigOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
 
@@ -267,10 +285,64 @@ export function AgentNode({ id, data, selected }: NodeProps<AgentNodeType>) {
           style={{ left: '50%' }}
         />
 
-        {/* Tool Call Indicator */}
-        <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] font-medium text-orange-600 opacity-0 group-hover:opacity-100 transition-opacity bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100 whitespace-nowrap">
-          Tool Call
-        </div>
+        {/* Tool Call Indicator (Compact Mode) & History */}
+        {(isRunningTool || toolLogs.length > 0) && (
+          <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1">
+            {/* Compact Active Tool Indicator */}
+            {isRunningTool && (
+              <div className="flex items-center gap-1.5 text-[10px] font-medium text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100 whitespace-nowrap animate-pulse shadow-sm">
+                <Activity size={10} className="animate-spin" />
+                Running: {currentToolName}
+              </div>
+            )}
+
+            {/* History Expand Button */}
+            {toolLogs.length > 0 && (
+              <Popover.Root>
+                <Popover.Trigger asChild>
+                  <button
+                    className="flex items-center justify-center p-0.5 bg-white border border-slate-200 rounded-full text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-colors shadow-sm"
+                    title="Show Tool History"
+                  >
+                    <ChevronDown size={12} />
+                  </button>
+                </Popover.Trigger>
+                <Popover.Portal>
+                  <Popover.Content
+                    className="bg-white rounded-lg shadow-xl border border-slate-200 w-64 p-2 z-50 text-xs animate-in fade-in zoom-in-95 data-[side=top]:slide-in-from-bottom-2"
+                    sideOffset={4}
+                  >
+                    <div className="flex items-center justify-between mb-2 pb-1 border-b border-slate-100">
+                      <span className="font-semibold text-slate-700 flex items-center gap-1">
+                        <History size={12} /> Tool History
+                      </span>
+                      <span className="text-slate-400 text-[10px]">{toolLogs.length} calls</span>
+                    </div>
+                    <div className="max-h-48 overflow-y-auto space-y-1">
+                      {toolLogs.map((log, i) => (
+                        <div
+                          key={i}
+                          className="flex items-start gap-2 p-1.5 rounded hover:bg-slate-50 transition-colors"
+                        >
+                          <Play size={8} className="mt-0.5 text-slate-400 shrink-0" />
+                          <div className="break-all">
+                            <div className="text-slate-700 font-medium">
+                              {log.details?.toolName || 'Unknown Tool'}
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              {new Date(log.timestamp).toLocaleTimeString()}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <Popover.Arrow className="fill-white" />
+                  </Popover.Content>
+                </Popover.Portal>
+              </Popover.Root>
+            )}
+          </div>
+        )}
       </div>
 
       <AgentConfigDialog

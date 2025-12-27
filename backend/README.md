@@ -55,6 +55,11 @@ graph TD
    ```bash
    poetry run uvicorn app.main:app --reload
    ```
+   ```
+   
+   > [!NOTE]
+   > **RAG Dependencies**: `chromadb` is installed by default. Requires SQLite > 3.35. If using on older systems, ensure SQLite is updated.
+   
    The API will be available at `http://localhost:8000`.
 
 ## 🧪 Testing

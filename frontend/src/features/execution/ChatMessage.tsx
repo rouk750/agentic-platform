@@ -84,7 +84,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
           <Markdown
             remarkPlugins={[remarkGfm]}
             components={{
-              code({ inline, className, children, ...props }: any) {
+              code({ inline: _inline, className, children, ...props }: any) {
                 return (
                   <code
                     {...props}

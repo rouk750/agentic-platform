@@ -7,11 +7,28 @@ import { getModels } from '../api/settings';
 import type { LLMProfile } from '../types/settings';
 import { optimizeNode, getAvailableGuardrails, type GuardrailDefinition } from '../api/smartNode';
 
+import type { SmartNodeData, Example, IOSpec } from '../types/smartNode';
+import type { GuardrailConfig } from '../api/smartNode';
+
+interface SmartNodeOutput extends IOSpec {
+  guardrail?: GuardrailConfig | null;
+  guardrails?: GuardrailConfig[];
+}
+
+interface SmartNodeFormValues {
+  label: string;
+  goal: string;
+  mode: 'ChainOfThought' | 'Predict';
+  inputs: IOSpec[];
+  outputs: SmartNodeOutput[];
+  llm_profile: string;
+}
+
 interface SmartNodeConfigDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  data: any;
-  onUpdate: (data: any) => void;
+  data: SmartNodeData & { id?: string }; // Expect id might be merged in data for this dialog
+  onUpdate: (data: SmartNodeData) => void;
 }
 
 export function SmartNodeConfigDialog({
@@ -27,7 +44,8 @@ export function SmartNodeConfigDialog({
       mode: data.mode || 'ChainOfThought',
       inputs: data.inputs || [{ name: 'input', desc: 'Main input' }],
       outputs: data.outputs || [{ name: 'output', desc: 'Main output' }],
-      llm_profile: data.llm_profile ? data.llm_profile.id?.toString() : '',
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      llm_profile: data.llm_profile ? (data.llm_profile as any).id?.toString() : '',
     },
     shouldUnregister: false, // Keep values validation state when unmounting components (switching tabs)
   });
@@ -68,12 +86,13 @@ export function SmartNodeConfigDialog({
         mode: data.mode || 'ChainOfThought',
         inputs: data.inputs || [{ name: 'input', desc: 'Main input' }],
         outputs: data.outputs || [{ name: 'output', desc: 'Main output' }],
-        llm_profile: data.llm_profile ? data.llm_profile.id?.toString() : '',
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        llm_profile: data.llm_profile ? (data.llm_profile as any).id?.toString() : '',
       });
     }
   }, [open, data, reset]);
 
-  const onSubmit = (formData: any, shouldClose: boolean = true) => {
+  const onSubmit = (formData: SmartNodeFormValues, shouldClose: boolean = true) => {
     const selectedModel = models.find((m) => m.id?.toString() === formData.llm_profile);
 
     onUpdate({
@@ -92,7 +111,7 @@ export function SmartNodeConfigDialog({
   const selectedMode = watch('mode');
 
   const [activeTab, setActiveTab] = useState<'config' | 'training'>('config');
-  const [examples, setExamples] = useState<any[]>(data.examples || []);
+  const [examples, setExamples] = useState<Example[]>(data.examples || []);
   const [maxRounds, setMaxRounds] = useState<number>(data.maxRounds || 10);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [optimizationResult, setOptimizationResult] = useState<any>(null);
@@ -107,8 +126,8 @@ export function SmartNodeConfigDialog({
   }, [open, data]);
 
   const handleAddExample = () => {
-    const inputKeys = inputFields.map((f: any) => f.name).filter((n: any) => n);
-    const outputKeys = outputFields.map((f: any) => f.name).filter((n: any) => n);
+    const inputKeys = inputFields.map((f) => f.name).filter((n) => n);
+    const outputKeys = outputFields.map((f) => f.name).filter((n) => n);
 
     if (inputKeys.length === 0 || outputKeys.length === 0) {
       alert('Please define Inputs and Outputs first in the Config tab.');
@@ -165,11 +184,11 @@ export function SmartNodeConfigDialog({
 
       // Prepare request payload
       const payload = {
-        node_id: data.id, // Assuming data has id from react flow node
+        node_id: (data.id || 'unknown_node') as string, // Assuming data has id from react flow node
         goal: watch('goal'),
         mode: watch('mode'),
-        inputs: inputFields.map((f: any) => ({ name: f.name, desc: f.desc })),
-        outputs: outputFields.map((f: any) => ({ name: f.name, desc: f.desc })),
+        inputs: inputFields.map((f) => ({ name: f.name, desc: f.desc })),
+        outputs: outputFields.map((f) => ({ name: f.name, desc: f.desc })),
         examples: examples,
         llm_profile_id: parseInt(llmProfileId),
         metric: 'exact_match',
@@ -187,8 +206,9 @@ export function SmartNodeConfigDialog({
         maxRounds: maxRounds,
         optimizationResult: result,
       });
-    } catch (e: any) {
-      alert(`Optimization failed: ${e.message}`);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Unknown error';
+      alert(`Optimization failed: ${msg}`);
     } finally {
       setIsOptimizing(false);
     }
@@ -231,8 +251,8 @@ export function SmartNodeConfigDialog({
     const headers = splitCSV(headerLine).map((h) => h?.trim().toLowerCase().replace(/^"|"$/g, ''));
 
     // Map headers to input/output keys
-    const inputKeys = inputFields.map((f: any) => f.name);
-    const outputKeys = outputFields.map((f: any) => f.name);
+    const inputKeys = inputFields.map((f) => f.name);
+    const outputKeys = outputFields.map((f) => f.name);
 
     const mapHeaderToKey = (header: string) => {
       // Exact match
@@ -240,11 +260,11 @@ export function SmartNodeConfigDialog({
       if (outputKeys.includes(header)) return { type: 'outputs', key: header };
 
       // Case insensitive match
-      const inMatch = inputKeys.find((k: any) => k.toLowerCase() === header);
-      if (inMatch) return { type: 'inputs', key: inMatch };
+      const inMatch = inputKeys.find((k) => k.toLowerCase() === header);
+      if (inMatch) return { type: 'inputs' as const, key: inMatch };
 
-      const outMatch = outputKeys.find((k: any) => k.toLowerCase() === header);
-      if (outMatch) return { type: 'outputs', key: outMatch };
+      const outMatch = outputKeys.find((k) => k.toLowerCase() === header);
+      if (outMatch) return { type: 'outputs' as const, key: outMatch };
 
       return null;
     };
@@ -257,24 +277,26 @@ export function SmartNodeConfigDialog({
       const row = splitCSV(lines[i]);
       if (row.length === 0) continue;
 
-      const example: any = { inputs: {}, outputs: {} };
+      const example: Example = { inputs: {}, outputs: {} };
       let hasData = false;
 
       row.forEach((cell, idx) => {
         const map = columnMapping[idx];
         if (map && cell) {
           const cleanCell = cell.replace(/^"|"$/g, '').replace(/""/g, '"');
-          example[map.type][map.key] = cleanCell;
+          // Use type assertion for dynamic access to Example keys
+          const typeKey = map.type as keyof Example;
+          (example[typeKey] as Record<string, string>)[map.key] = cleanCell;
           hasData = true;
         }
       });
 
       if (hasData) {
         // Ensure all keys exist even if empty
-        inputKeys.forEach((k: any) => {
+        inputKeys.forEach((k) => {
           if (!example.inputs[k]) example.inputs[k] = '';
         });
-        outputKeys.forEach((k: any) => {
+        outputKeys.forEach((k) => {
           if (!example.outputs[k]) example.outputs[k] = '';
         });
         newExamples.push(example);
@@ -391,7 +413,8 @@ export function SmartNodeConfigDialog({
                   <div className="grid grid-cols-2 gap-4">
                     <div
                       className={`cursor-pointer border-2 rounded-xl p-4 flex flex-col gap-2 transition-all ${selectedMode === 'ChainOfThought' ? 'border-amber-500 bg-amber-50/50 ring-1 ring-amber-500/20' : 'border-slate-200 hover:border-slate-300'}`}
-                      onClick={() => setValue('mode', 'ChainOfThought')}
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      onClick={() => setValue('mode', 'ChainOfThought' as any)}
                     >
                       <div className="flex items-center gap-2 font-semibold text-amber-700">
                         <Brain size={18} />
@@ -405,7 +428,8 @@ export function SmartNodeConfigDialog({
 
                     <div
                       className={`cursor-pointer border-2 rounded-xl p-4 flex flex-col gap-2 transition-all ${selectedMode === 'Predict' ? 'border-blue-500 bg-blue-50/50 ring-1 ring-blue-500/20' : 'border-slate-200 hover:border-slate-300'}`}
-                      onClick={() => setValue('mode', 'Predict')}
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      onClick={() => setValue('mode', 'Predict' as any)}
                     >
                       <div className="flex items-center gap-2 font-semibold text-blue-700">
                         <Zap size={18} />
@@ -489,8 +513,11 @@ export function SmartNodeConfigDialog({
                     </div>
                     <div className="space-y-2">
                       {outputFields.map((field, index) => {
-                        const currentLegacyGuardrail = watch(`outputs.${index}.guardrail`);
-                        const currentGuardrails = watch(`outputs.${index}.guardrails`) || [];
+                        // Cast paths to any to avoid strict type checking on array indices
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const currentLegacyGuardrail = watch(`outputs.${index}.guardrail` as any);
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        const currentGuardrails = watch(`outputs.${index}.guardrails` as any) || [];
 
                         // Combine legacy and new list for display
                         const activeGuardrails =
@@ -501,24 +528,35 @@ export function SmartNodeConfigDialog({
                               : [];
 
                         // Helper to update specific guardrail in list
-                        const updateGuardrail = (gIndex: number, newG: any) => {
+                        const updateGuardrail = (gIndex: number, newG: GuardrailConfig) => {
                           const newErrors = [...activeGuardrails];
                           newErrors[gIndex] = newG;
-                          setValue(`outputs.${index}.guardrails`, newErrors);
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          setValue(`outputs.${index}.guardrails` as any, newErrors);
                           // Clear legacy to avoid confusion if we are now using list
-                          setValue(`outputs.${index}.guardrail`, null);
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          setValue(`outputs.${index}.guardrail` as any, null);
                         };
 
                         const addGuardrail = () => {
-                          const newList = [...activeGuardrails, { id: 'json', params: {} }];
-                          setValue(`outputs.${index}.guardrails`, newList);
-                          setValue(`outputs.${index}.guardrail`, null);
+                          const newList: GuardrailConfig[] = [
+                            ...activeGuardrails,
+                            { id: 'json', params: {} },
+                          ];
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          setValue(`outputs.${index}.guardrails` as any, newList);
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          setValue(`outputs.${index}.guardrail` as any, null);
                         };
 
                         const removeGuardrail = (gIndex: number) => {
-                          const newG = activeGuardrails.filter((_: any, i: number) => i !== gIndex);
-                          setValue(`outputs.${index}.guardrails`, newG);
-                          setValue(`outputs.${index}.guardrail`, null);
+                          const newG = activeGuardrails.filter(
+                            (_: unknown, i: number) => i !== gIndex
+                          );
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          setValue(`outputs.${index}.guardrails` as any, newG);
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          setValue(`outputs.${index}.guardrail` as any, null);
                         };
 
                         return (
@@ -543,7 +581,7 @@ export function SmartNodeConfigDialog({
 
                               {/* Guardrails List */}
                               <div className="space-y-2">
-                                {activeGuardrails.map((g: any, gIndex: number) => (
+                                {activeGuardrails.map((g: GuardrailConfig, gIndex: number) => (
                                   <div
                                     key={gIndex}
                                     className="flex items-start gap-2 bg-white p-2 rounded border border-slate-200 shadow-sm"

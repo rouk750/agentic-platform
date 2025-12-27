@@ -106,6 +106,26 @@ Creates dynamic routing function at runtime.
 
 ---
 
+## Tool Unification & Implicit Execution
+
+### Architecture
+To simplify graph management, tools can be executed "implicitly" without explicit ToolExecutor nodes.
+
+1.  **Implicit Tool Binding**:
+    *   Agents connected to resources (like RAG) via dashed "Resource Edges" automatically get tool definitions injected.
+2.  **Implicit Execution Injection**:
+    *   During compilation, `compiler.py` detects Agents with bound tools but NO outgoing `tool-call` edge.
+    *   It automatically creates an invisible `ToolNode` (`implicit_tool_exec_{agent_id}`).
+    *   It creates a routing loop: `Agent -> ImplicitToolNode -> Agent`.
+
+### Visual Representation (Frontend)
+*   **Resource Edge**: Dashed line (`Agent -> RAG`) representing capability access.
+*   **Compact Tool UI**:
+    *   Agent Node shows "Running [Tool]..." badge during execution.
+    *   Full tool history available via "Expand" button.
+
+---
+
 ## DSPy Integration
 
 | Module | Description |

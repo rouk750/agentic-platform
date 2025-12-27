@@ -23,6 +23,7 @@ from app.api import flows
 from app.api import smart_nodes
 from app.api import guardrails
 from app.api import agent_templates
+from app.api import rag
 
 
 @asynccontextmanager
@@ -92,6 +93,7 @@ app.include_router(flows.router, prefix=settings.api_prefix, tags=["flows"])
 app.include_router(smart_nodes.router, prefix=settings.api_prefix, tags=["smart-nodes"])
 app.include_router(guardrails.router, prefix=settings.api_prefix, tags=["guardrails"])
 app.include_router(agent_templates.router, prefix=settings.api_prefix, tags=["agent-templates"])
+app.include_router(rag.router, prefix=f"{settings.api_prefix}/rag", tags=["rag"])
 
 
 @app.get("/")

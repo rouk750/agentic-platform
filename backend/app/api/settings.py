@@ -56,10 +56,13 @@ def delete_model_profile(model_id: int, session: Session = Depends(get_session))
     session.delete(profile)
     session.commit()
     
-    
     # Delete from Keyring
     if profile.api_key_ref:
         delete_api_key(profile.api_key_ref)
+    
+    # Invalidate cache for this specific model
+    from app.services.llm_factory import invalidate_model_cache
+    invalidate_model_cache(model_id)
         
     return {"ok": True}
 
@@ -89,6 +92,11 @@ def update_model_profile(model_id: int, profile_update: LLMProfileUpdate, sessio
     session.add(db_profile)
     session.commit()
     session.refresh(db_profile)
+    
+    # Invalidate cache for this specific model
+    from app.services.llm_factory import invalidate_model_cache
+    invalidate_model_cache(model_id)
+    
     return db_profile
 
 @router.post("/models/{model_id}/test")

@@ -32,12 +32,13 @@ export function RouterConfigDialog({
     name: 'routes',
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const watchedRoutes = watch('routes');
 
   useEffect(() => {
     if (open) {
       reset({
-        routes: (data.routes || []).map((r: any) => ({
+        routes: (data.routes || []).map((r: RouteCondition) => ({
           ...r,
           source: r.source || 'message', // default to message for backward compat
         })),

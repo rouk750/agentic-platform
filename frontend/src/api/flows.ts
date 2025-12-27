@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { Flow, FlowVersion } from '../types/flow';
+import type { Flow } from '../types/flow';
 
 // Re-export types for backward compatibility
 export type { Flow, FlowVersion } from '../types/flow';
@@ -27,7 +27,7 @@ export const flowApi = {
     return res.data;
   },
 
-  create: async (flow: Flow): Promise<Flow> => {
+  create: async (flow: Partial<Flow>): Promise<Flow> => {
     const baseUrl = await getBaseUrl();
     const res = await axios.post(`${baseUrl}/flows`, flow);
     return res.data;
