@@ -16,9 +16,9 @@ interface RunState {
   toolStats: Record<string, Record<string, number>>; // nodeId -> toolName -> count
   tokenUsage: Record<string, { input: number; output: number; total: number }>;
   pendingStepTokens: Record<string, { input: number; output: number; total: number }>; // Transient for current step
-  pendingNodeInputs: Record<string, any>; // Transient inputs from node_active
-  nodeSnapshots: Record<string, any[]>; // nodeId -> list of snapshots
-  graphDefinition: any | null; // For debug/replay
+  pendingNodeInputs: Record<string, unknown>; // Transient inputs from node_active
+  nodeSnapshots: Record<string, unknown[]>; // nodeId -> list of snapshots
+  graphDefinition: unknown | null; // For debug/replay
   logs: LogEntry[];
 
   // Actions
@@ -40,9 +40,9 @@ interface RunState {
   addMessage: (message: Omit<Message, 'id' | 'timestamp'>) => void;
   appendToken: (token: string, nodeId?: string) => void;
   addLog: (entry: Omit<LogEntry, 'timestamp'>) => void;
-  storeNodeInput: (nodeId: string, input: any) => void;
-  addSnapshot: (nodeId: string, snapshot: any, output?: any) => void;
-  setGraphDefinition: (graph: any) => void;
+  storeNodeInput: (nodeId: string, input: unknown) => void;
+  addSnapshot: (nodeId: string, snapshot: unknown, output?: unknown) => void;
+  setGraphDefinition: (graph: unknown) => void;
   completeNodeMessage: (nodeId: string) => void;
   clearSnapshots: () => void;
   clearSession: () => void;
@@ -224,15 +224,15 @@ export const useRunStore = create<RunState>((set) => ({
     set((state) => {
       // Consume pending tokens for this step
       const stepTokens = state.pendingStepTokens[nodeId];
-      
+
       // Consume pending input for this step
       const stepInput = state.pendingNodeInputs[nodeId];
 
       // Enrich snapshot with metadata
       const enrichedSnapshot = {
-        ...snapshot,
+        ...(typeof snapshot === 'object' && snapshot !== null ? snapshot : { data: snapshot }),
         input: stepInput, // Add explicit input
-        output: output,   // Add explicit output
+        output: output, // Add explicit output
         _meta: {
           tokens: stepTokens,
           timestamp: Date.now(),

@@ -2,17 +2,14 @@ import {
   Bot,
   Wrench,
   GitFork,
-  Settings,
   Database,
   Sparkles,
   RefreshCw,
   Loader2,
   Workflow,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import { templateApi, AgentTemplate } from '../api/templates';
-import { toast } from 'sonner';
+import { templateApi, type AgentTemplate } from '../api/templates';
 
 export default function EditorSidebar() {
   const [templates, setTemplates] = useState<AgentTemplate[]>([]);
@@ -22,13 +19,10 @@ export default function EditorSidebar() {
     const loadTemplates = async () => {
       try {
         // Ensure backend is reachable and endpoint exists.
-        // Since I just added it, it might fail if backend didn't reload or migrate.
-        // But assuming it works:
         const data = await templateApi.getAll();
         setTemplates(data);
       } catch (error) {
         console.error('Failed to load templates', error);
-        // Silent error or small toast? Let's just log for sidebar to avoid annoyance
       } finally {
         setLoading(false);
       }

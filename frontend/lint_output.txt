@@ -1,0 +1,536 @@
+
+> agentic-platform-frontend@0.1.0 lint
+> eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0
+
+
+/Users/faroukbelhadj/agentic-platform/frontend/electron/main.ts
+  22:3  warning  Unexpected console statement  no-console
+  34:5  warning  Unexpected console statement  no-console
+  48:7  warning  Unexpected console statement  no-console
+  58:7  warning  Unexpected console statement  no-console
+
+/Users/faroukbelhadj/agentic-platform/frontend/electron/preload.ts
+   5:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   6:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  10:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/api/apiClient.ts
+  26:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  27:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/api/flows.ts
+   8:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   9:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  47:48  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/api/rag.ts
+  36:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/api/smartNode.ts
+  16:27  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  30:13  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AgentTemplateDialog.tsx
+   30:55  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  162:23  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx
+  16:11  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          @typescript-eslint/no-explicit-any
+  54:12  error    Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx:54:12
+  52 |             Workspace
+  53 |           </div>
+> 54 |           <NavItem to="/flows" icon={GitFork} label="Flows" />
+     |            ^^^^^^^ This component is created during render
+  55 |           <NavItem to="/agents" icon={Box} label="Agents & Nodes" />
+  56 |         </div>
+  57 |
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx:9:19
+   7 |   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+   8 |
+>  9 |   const NavItem = ({
+     |                   ^^
+> 10 |     to,
+     | ^^^^^^^
+> 11 |     icon: Icon,
+     …
+     | ^^^^^^^
+> 34 |     </NavLink>
+     | ^^^^^^^
+> 35 |   );
+     | ^^^^ The component is created during render here
+  36 |
+  37 |   return (
+  38 |     <aside className="w-64 h-full bg-white border-r border-slate-200 flex flex-col flex-shrink-0">                                                                                                                                                                                                                                                                                                                                  react-hooks/static-components
+  55:12  error    Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx:55:12
+  53 |           </div>
+  54 |           <NavItem to="/flows" icon={GitFork} label="Flows" />
+> 55 |           <NavItem to="/agents" icon={Box} label="Agents & Nodes" />
+     |            ^^^^^^^ This component is created during render
+  56 |         </div>
+  57 |
+  58 |         {/* Settings Section */}
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx:9:19
+   7 |   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+   8 |
+>  9 |   const NavItem = ({
+     |                   ^^
+> 10 |     to,
+     | ^^^^^^^
+> 11 |     icon: Icon,
+     …
+     | ^^^^^^^
+> 34 |     </NavLink>
+     | ^^^^^^^
+> 35 |   );
+     | ^^^^ The component is created during render here
+  36 |
+  37 |   return (
+  38 |     <aside className="w-64 h-full bg-white border-r border-slate-200 flex flex-col flex-shrink-0">                                                                                                                                                                                                                                                                                                                       react-hooks/static-components
+  71:16  error    Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx:71:16
+  69 |             <div className="space-y-1 animate-in slide-in-from-top-1 duration-200">
+  70 |               {/* Redirect /settings to /settings/models usually, but links connect directly */}
+> 71 |               <NavItem to="/settings/general" icon={Box} label="General" />
+     |                ^^^^^^^ This component is created during render
+  72 |               <NavItem to="/settings/models" icon={LayoutGrid} label="Models & Keys" />
+  73 |               <NavItem to="/settings/appearance" icon={Palette} label="Appearance" />
+  74 |               <NavItem to="/settings/help" icon={Info} label="Help" />
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx:9:19
+   7 |   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+   8 |
+>  9 |   const NavItem = ({
+     |                   ^^
+> 10 |     to,
+     | ^^^^^^^
+> 11 |     icon: Icon,
+     …
+     | ^^^^^^^
+> 34 |     </NavLink>
+     | ^^^^^^^
+> 35 |   );
+     | ^^^^ The component is created during render here
+  36 |
+  37 |   return (
+  38 |     <aside className="w-64 h-full bg-white border-r border-slate-200 flex flex-col flex-shrink-0">  react-hooks/static-components
+  72:16  error    Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx:72:16
+  70 |               {/* Redirect /settings to /settings/models usually, but links connect directly */}
+  71 |               <NavItem to="/settings/general" icon={Box} label="General" />
+> 72 |               <NavItem to="/settings/models" icon={LayoutGrid} label="Models & Keys" />
+     |                ^^^^^^^ This component is created during render
+  73 |               <NavItem to="/settings/appearance" icon={Palette} label="Appearance" />
+  74 |               <NavItem to="/settings/help" icon={Info} label="Help" />
+  75 |               <NavItem to="/settings/about" icon={Info} label="About" />
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx:9:19
+   7 |   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+   8 |
+>  9 |   const NavItem = ({
+     |                   ^^
+> 10 |     to,
+     | ^^^^^^^
+> 11 |     icon: Icon,
+     …
+     | ^^^^^^^
+> 34 |     </NavLink>
+     | ^^^^^^^
+> 35 |   );
+     | ^^^^ The component is created during render here
+  36 |
+  37 |   return (
+  38 |     <aside className="w-64 h-full bg-white border-r border-slate-200 flex flex-col flex-shrink-0">             react-hooks/static-components
+  73:16  error    Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx:73:16
+  71 |               <NavItem to="/settings/general" icon={Box} label="General" />
+  72 |               <NavItem to="/settings/models" icon={LayoutGrid} label="Models & Keys" />
+> 73 |               <NavItem to="/settings/appearance" icon={Palette} label="Appearance" />
+     |                ^^^^^^^ This component is created during render
+  74 |               <NavItem to="/settings/help" icon={Info} label="Help" />
+  75 |               <NavItem to="/settings/about" icon={Info} label="About" />
+  76 |             </div>
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx:9:19
+   7 |   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+   8 |
+>  9 |   const NavItem = ({
+     |                   ^^
+> 10 |     to,
+     | ^^^^^^^
+> 11 |     icon: Icon,
+     …
+     | ^^^^^^^
+> 34 |     </NavLink>
+     | ^^^^^^^
+> 35 |   );
+     | ^^^^ The component is created during render here
+  36 |
+  37 |   return (
+  38 |     <aside className="w-64 h-full bg-white border-r border-slate-200 flex flex-col flex-shrink-0">                                                                                           react-hooks/static-components
+  74:16  error    Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx:74:16
+  72 |               <NavItem to="/settings/models" icon={LayoutGrid} label="Models & Keys" />
+  73 |               <NavItem to="/settings/appearance" icon={Palette} label="Appearance" />
+> 74 |               <NavItem to="/settings/help" icon={Info} label="Help" />
+     |                ^^^^^^^ This component is created during render
+  75 |               <NavItem to="/settings/about" icon={Info} label="About" />
+  76 |             </div>
+  77 |           )}
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx:9:19
+   7 |   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+   8 |
+>  9 |   const NavItem = ({
+     |                   ^^
+> 10 |     to,
+     | ^^^^^^^
+> 11 |     icon: Icon,
+     …
+     | ^^^^^^^
+> 34 |     </NavLink>
+     | ^^^^^^^
+> 35 |   );
+     | ^^^^ The component is created during render here
+  36 |
+  37 |   return (
+  38 |     <aside className="w-64 h-full bg-white border-r border-slate-200 flex flex-col flex-shrink-0">                                                                                                                                                          react-hooks/static-components
+  75:16  error    Error: Cannot create components during render
+
+Components created during render will reset their state each time they are created. Declare components outside of render.
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx:75:16
+  73 |               <NavItem to="/settings/appearance" icon={Palette} label="Appearance" />
+  74 |               <NavItem to="/settings/help" icon={Info} label="Help" />
+> 75 |               <NavItem to="/settings/about" icon={Info} label="About" />
+     |                ^^^^^^^ This component is created during render
+  76 |             </div>
+  77 |           )}
+  78 |         </div>
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/AppSidebar.tsx:9:19
+   7 |   const [isSettingsOpen, setIsSettingsOpen] = useState(true);
+   8 |
+>  9 |   const NavItem = ({
+     |                   ^^
+> 10 |     to,
+     | ^^^^^^^
+> 11 |     icon: Icon,
+     …
+     | ^^^^^^^
+> 34 |     </NavLink>
+     | ^^^^^^^
+> 35 |   );
+     | ^^^^ The component is created during render here
+  36 |
+  37 |   return (
+  38 |     <aside className="w-64 h-full bg-white border-r border-slate-200 flex flex-col flex-shrink-0">                                                                                                                                                                                                                                   react-hooks/static-components
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/EditorSidebar.tsx
+  33:73  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/components/FlowEditor.tsx
+  129:25  warning  Unexpected any. Specify a different type                                                                  @typescript-eslint/no-explicit-any
+  191:6   warning  React Hook useEffect has a missing dependency: 'nodes'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  204:17  warning  Unexpected any. Specify a different type                                                                  @typescript-eslint/no-explicit-any
+  275:21  warning  Unexpected any. Specify a different type                                                                  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/context/RuntimeContext.tsx
+    6:24  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-explicit-any
+   13:17  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         react-refresh/only-export-components
+   49:5   error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `incrementNodeExecution`, but the source dependencies were [setStatus, appendToken, addActiveNode, removeActiveNode, addLog, addMessage, clearSession, setCurrentTool, updateIteratorProgress, addToolExecution, addSnapshot, setRunId, setPaused, addTokenUsage, setGraphDefinition]. Inferred different dependency than source.
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/context/RuntimeContext.tsx:49:5
+   47 |
+   48 |   const connect = useCallback(
+>  49 |     (graphJson: any, input: string) => {
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  50 |       // 1. Reset state
+      | ^^^^^^^^^^^^^^^^^^^^^^^
+>  51 |       clearSession();
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^
+> 263 |       startSocket();
+      | ^^^^^^^^^^^^^^^^^^^^^^^
+> 264 |     },
+      | ^^^^^^ Could not preserve existing manual memoization
+  265 |     [
+  266 |       setStatus,
+  267 |       appendToken,  react-hooks/preserve-manual-memoization
+   49:5   error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `storeNodeInput`, but the source dependencies were [setStatus, appendToken, addActiveNode, removeActiveNode, addLog, addMessage, clearSession, setCurrentTool, updateIteratorProgress, addToolExecution, addSnapshot, setRunId, setPaused, addTokenUsage, setGraphDefinition]. Inferred different dependency than source.
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/context/RuntimeContext.tsx:49:5
+   47 |
+   48 |   const connect = useCallback(
+>  49 |     (graphJson: any, input: string) => {
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  50 |       // 1. Reset state
+      | ^^^^^^^^^^^^^^^^^^^^^^^
+>  51 |       clearSession();
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^
+> 263 |       startSocket();
+      | ^^^^^^^^^^^^^^^^^^^^^^^
+> 264 |     },
+      | ^^^^^^ Could not preserve existing manual memoization
+  265 |     [
+  266 |       setStatus,
+  267 |       appendToken,          react-hooks/preserve-manual-memoization
+   49:5   error    Compilation Skipped: Existing memoization could not be preserved
+
+React Compiler has skipped optimizing this component because the existing manual memoization could not be preserved. The inferred dependencies did not match the manually specified dependencies, which could cause the value to change more or less frequently than expected. The inferred dependency was `completeNodeMessage`, but the source dependencies were [setStatus, appendToken, addActiveNode, removeActiveNode, addLog, addMessage, clearSession, setCurrentTool, updateIteratorProgress, addToolExecution, addSnapshot, setRunId, setPaused, addTokenUsage, setGraphDefinition]. Inferred different dependency than source.
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/context/RuntimeContext.tsx:49:5
+   47 |
+   48 |   const connect = useCallback(
+>  49 |     (graphJson: any, input: string) => {
+      |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+>  50 |       // 1. Reset state
+      | ^^^^^^^^^^^^^^^^^^^^^^^
+>  51 |       clearSession();
+      …
+      | ^^^^^^^^^^^^^^^^^^^^^^^
+> 263 |       startSocket();
+      | ^^^^^^^^^^^^^^^^^^^^^^^
+> 264 |     },
+      | ^^^^^^ Could not preserve existing manual memoization
+  265 |     [
+  266 |       setStatus,
+  267 |       appendToken,     react-hooks/preserve-manual-memoization
+   49:17  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-explicit-any
+   57:40  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-explicit-any
+   72:26  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-explicit-any
+   73:37  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               @typescript-eslint/no-explicit-any
+  115:19  error    Unexpected lexical declaration in case block                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           no-case-declarations
+  117:19  error    Unexpected lexical declaration in case block                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           no-case-declarations
+  153:19  error    Unexpected lexical declaration in case block                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           no-case-declarations
+  216:19  error    Unexpected lexical declaration in case block                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           no-case-declarations
+  217:19  error    Unexpected lexical declaration in case block                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           no-case-declarations
+  265:5   warning  React Hook useCallback has missing dependencies: 'completeNodeMessage', 'incrementNodeExecution', and 'storeNodeInput'. Either include them or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             react-hooks/exhaustive-deps
+  308:9   warning  Unexpected console statement                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           no-console
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/electron.d.ts
+  3:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  3:67  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  4:28  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/features/execution/ChatMessage.tsx
+   87:22  warning  'inline' is defined but never used. Allowed unused args must match /^_/u  @typescript-eslint/no-unused-vars
+   87:63  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+  134:63  warning  Unexpected any. Specify a different type                                  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/features/execution/ChatPanel.tsx
+  36:7  warning  Unexpected console statement  no-console
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/features/observability/DeepObservabilityPage.tsx
+  14:10  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  21:11  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  22:12  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  45:32  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+  67:5   error    Error: Calling setState synchronously within an effect can trigger cascading renders
+
+Effects are intended to synchronize state between React and external systems such as manually updating the DOM, state management libraries, or other platform APIs. In general, the body of an effect should do one or both of the following:
+* Update external systems with the latest state from React.
+* Subscribe for updates from some external system, calling setState in a callback function when external state changes.
+
+Calling setState synchronously within an effect body causes cascading renders that can hurt performance, and is not recommended. (https://react.dev/learn/you-might-not-need-an-effect).
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/features/observability/DeepObservabilityPage.tsx:67:5
+  65 |     );
+  66 |
+> 67 |     setSteps(allSnapshots);
+     |     ^^^^^^^^ Avoid calling setState() directly within an effect
+  68 |   }, [nodeSnapshots]);
+  69 |
+  70 |   // Find the selected snapshot data  react-hooks/set-state-in-effect
+  68:6   warning  React Hook useEffect has a missing dependency: 'nodeLabels'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                react-hooks/exhaustive-deps
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/features/observability/components/ExecutionTimeline.tsx
+   4:10  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  79:46  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  80:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/features/observability/components/PromptPlayground.tsx
+   8:9   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  20:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  75:60  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/features/observability/components/TraceInspector.tsx
+  15:9   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  25:9   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  52:40  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/features/settings/AddModelDialog.tsx
+  109:6   warning  React Hook useEffect has a missing dependency: 'scanModels'. Either include it or remove the dependency array                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               react-hooks/exhaustive-deps
+  124:18  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/features/settings/AddModelDialog.tsx:124:18
+  122 |
+  123 |   const onTestConnection = async () => {
+> 124 |     const data = watch();
+      |                  ^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.
+  125 |     if (!data.model_id) return;
+  126 |
+  127 |     setTesting(true);  react-hooks/incompatible-library
+  139:30  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/no-explicit-any
+  144:35  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/hooks/useIsolatedRuntime.ts
+   5:11  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  17:71  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  26:24  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  27:35  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  85:16  warning  'e' is defined but never used             @typescript-eslint/no-unused-vars
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/main.tsx
+  6:21  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/nodes/AgentConfigDialog.tsx
+  100:22  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/nodes/AgentConfigDialog.tsx:100:22
+   98 |   };
+   99 |
+> 100 |   const isFlexible = watch('flexible_mode');
+      |                      ^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.
+  101 |
+  102 |   return (
+  103 |     <Dialog.Root open={open} onOpenChange={onOpenChange}>  react-hooks/incompatible-library
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/nodes/AgentNode.tsx
+  47:51  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/nodes/RAGNode.tsx
+  23:18  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/nodes/RAGNodeConfigDialog.tsx
+   25:20  warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   27:20  warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+   91:25  warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  117:6   warning  React Hook useEffect has a missing dependency: 'fetchDocuments'. Either include it or remove the dependency array  react-hooks/exhaustive-deps
+  128:25  warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+  135:14  warning  'error' is defined but never used                                                                                  @typescript-eslint/no-unused-vars
+  150:25  warning  Unexpected any. Specify a different type                                                                           @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/nodes/RouterConfigDialog.tsx
+  35:25  warning  Compilation Skipped: Use of incompatible library
+
+This API returns functions which cannot be memoized without leading to stale UI. To prevent this, by default React Compiler will skip memoizing this component/hook. However, you may see issues if values from this API are passed to other components/hooks that are memoized.
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/nodes/RouterConfigDialog.tsx:35:25
+  33 |   });
+  34 |
+> 35 |   const watchedRoutes = watch('routes');
+     |                         ^^^^^ React Hook Form's `useForm()` API returns a `watch()` function which cannot be memoized safely.
+  36 |
+  37 |   useEffect(() => {
+  38 |     if (open) {  react-hooks/incompatible-library
+  40:45  warning  Unexpected any. Specify a different type                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/nodes/SmartNode.tsx
+  36:51  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/nodes/SmartNodeConfigDialog.tsx
+   13:9   warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   14:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   76:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   95:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+   98:64  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  110:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  110:70  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  111:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  111:72  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  171:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  172:39  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  190:17  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  234:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  235:45  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  243:42  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  246:44  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  260:22  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  274:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  277:32  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  504:72  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  519:68  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  546:59  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/nodes/TechnicalInfoDialog.tsx
+  7:9  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/pages/AgentsPage.tsx
+   49:28  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  130:28  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  149:26  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  276:62  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  290:59  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  338:67  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  407:73  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  420:67  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  428:75  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/pages/DashboardPage.tsx
+  130:43  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  135:53  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  155:43  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/pages/FlowsPage.tsx
+  128:22  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  283:62  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  297:55  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  343:67  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  414:73  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  427:67  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+  435:75  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/store/runStore.ts
+  19:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  20:33  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  21:20  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  43:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  44:43  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  44:57  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  45:31  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/types/smartNode.ts
+  15:14  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/src/vite-env.d.ts
+  14:37  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  14:69  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+  15:30  warning  Unexpected any. Specify a different type  @typescript-eslint/no-explicit-any
+
+/Users/faroukbelhadj/agentic-platform/frontend/tests/api/errorHandler.test.ts
+  34:13  warning  Forbidden non-null assertion  @typescript-eslint/no-non-null-assertion
+
+✖ 146 problems (16 errors, 130 warnings)
+

@@ -3,9 +3,22 @@ import { useIsolatedRuntime } from '../../../hooks/useIsolatedRuntime';
 import { useRunStore } from '../../../store/runStore';
 import { useState } from 'react';
 
+interface Message {
+  role: string;
+  content: string;
+}
+
+interface StepData {
+  state?: {
+    messages?: Message[];
+  };
+  node_id?: string;
+  config?: unknown;
+}
+
 interface PlaygroundProps {
   stepId: string | null;
-  data: any | null; // StepSnapshot
+  data: StepData | null;
 }
 
 export default function PromptPlayground({ stepId, data }: PlaygroundProps) {
@@ -17,7 +30,7 @@ export default function PromptPlayground({ stepId, data }: PlaygroundProps) {
   // Extract system prompt from state if available (conceptually)
   // For now we don't have explicit system prompt in snapshot unless we store it.
   // Let's use a placeholder or try to find a 'SystemMessage' in messages.
-  const systemMsg = messages.find((m: any) => m.role === 'system');
+  const systemMsg = messages.find((m: Message) => m.role === 'system');
   const systemPrompt = systemMsg ? systemMsg.content : 'System prompt not found in trace history.';
 
   const [input, setInput] = useState('');
@@ -72,14 +85,16 @@ export default function PromptPlayground({ stepId, data }: PlaygroundProps) {
 
     if (isolatedGraph.nodes) {
       let found = false;
-      isolatedGraph.nodes = isolatedGraph.nodes.map((node: any) => {
-        if (node.id === targetNodeId) {
-          found = true;
-          return { ...node, data: { ...node.data, isStart: true } };
+      isolatedGraph.nodes = isolatedGraph.nodes.map(
+        (node: Record<string, unknown> & { id?: string; data?: Record<string, unknown> }) => {
+          if (node.id === targetNodeId) {
+            found = true;
+            return { ...node, data: { ...node.data, isStart: true } };
+          }
+          // Remove isStart from all others
+          return { ...node, data: { ...node.data, isStart: false } };
         }
-        // Remove isStart from all others
-        return { ...node, data: { ...node.data, isStart: false } };
-      });
+      );
 
       if (!found) {
         console.warn(`Target node ${targetNodeId} not found in graph definition.`);

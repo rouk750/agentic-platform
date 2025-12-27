@@ -127,12 +127,12 @@ export default function DashboardPage() {
             {flows.map((flow) => (
               <div
                 key={flow.id}
-                onClick={() => handleOpen(flow.id!)}
+                onClick={() => flow.id && handleOpen(flow.id)}
                 className="bg-white border border-slate-200 rounded-xl p-6 cursor-pointer hover:shadow-lg hover:border-blue-300 transition-all group relative overflow-hidden"
               >
                 <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button
-                    onClick={(e) => handleDelete(e, flow.id!)}
+                    onClick={(e) => flow.id && handleDelete(e, flow.id)}
                     className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                   >
                     <Trash2 size={18} />
@@ -152,7 +152,9 @@ export default function DashboardPage() {
                 </div>
 
                 <div className="flex justify-between items-center text-xs text-slate-400 border-t border-slate-100 pt-4">
-                  <span>Updated {new Date(flow.updated_at!).toLocaleDateString()}</span>
+                  <span>
+                    Updated {new Date(flow.updated_at || new Date()).toLocaleDateString()}
+                  </span>
                   <div className="flex items-center gap-1 text-blue-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0">
                     Open <ArrowRight size={12} />
                   </div>

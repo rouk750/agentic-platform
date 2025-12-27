@@ -48,6 +48,17 @@ export const useGraphStore = create<GraphState>((set, get) => ({
         height: 20,
       },
     };
+
+    // [FEATURE] Automatic Resource Binding Visualization
+    // If connecting to a 'rag' node, use the 'resource' edge type (dashed line)
+    // and disable flow animation, as this represents a capability binding, not execution flow.
+    const targetNode = get().nodes.find((n) => n.id === connection.target);
+    if (targetNode?.type === 'rag') {
+      edge.type = 'resource';
+      edge.markerEnd = { type: MarkerType.ArrowClosed, width: 20, height: 20 }; // Keep marker
+      // Clear animation if any default was applied (none here, but good practice)
+    }
+
     set({
       edges: addEdge(edge, get().edges),
     });

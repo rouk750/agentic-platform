@@ -1,4 +1,4 @@
-import { Trash2, Bot, Server, Edit2, Play, Loader2, Wifi } from 'lucide-react';
+import { Trash2, Bot, Server, Edit2, Loader2, Wifi } from 'lucide-react';
 import type { LLMProfile } from '../../types/settings';
 import { useState } from 'react';
 

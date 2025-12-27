@@ -11,8 +11,8 @@ type RouterNodeType = Node<RouterNodeData>;
 
 export function RouterNode({ id, selected, data }: NodeProps<RouterNodeType>) {
   const { updateNodeData } = useReactFlow();
-  const activeNodeId = useRunStore((state) => state.activeNodeId);
-  const isActive = id === activeNodeId;
+  const activeNodeIds = useRunStore((state) => state.activeNodeIds);
+  const isActive = activeNodeIds.includes(id);
   const [configOpen, setConfigOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
 

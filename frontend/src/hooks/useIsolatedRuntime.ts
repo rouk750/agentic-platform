@@ -1,5 +1,4 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
-import { toast } from 'sonner';
 
 interface IsolatedRunState {
   status: 'idle' | 'running' | 'done' | 'error';
@@ -80,10 +79,10 @@ export function useIsolatedRuntime() {
           }
         };
 
-        socket.onerror = (e) => {
+        socket.onerror = () => {
           setState((s) => ({ ...s, status: 'error', logs: [...s.logs, 'WebSocket Error'] }));
         };
-      } catch (e) {
+      } catch (_e) {
         setState((s) => ({ ...s, status: 'error', logs: [...s.logs, 'Failed to connect'] }));
       }
     };

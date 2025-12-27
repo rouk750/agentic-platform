@@ -27,6 +27,11 @@ export interface Message {
 export interface LogEntry {
   timestamp: number;
   event: string;
-  details: unknown;
+  details: {
+    nodeId?: string;
+    toolName?: string;
+    data?: unknown;
+    [key: string]: unknown;
+  };
   level: 'info' | 'error' | 'warn';
 }

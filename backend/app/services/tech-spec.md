@@ -18,7 +18,8 @@ services/
 ├── llm_factory.py       # LLM instance creation
 ├── tool_registry.py     # Tool discovery & registry
 ├── mcp_client.py        # MCP server connections
-└── security.py          # Keyring operations
+├── security.py          # Keyring operations
+└── rag_service.py       # RAG logic (ChromaDB + DSPy)
 ```
 
 ---
@@ -43,6 +44,24 @@ Business logic for Flow entities with automatic versioning.
 - `FlowRepository`, `FlowVersionRepository`
 - `app.exceptions` (ResourceNotFoundError, ResourceLockedError, ValidationError)
 - `app.logging`
+
+---
+
+## RagService (`rag_service.py`)
+
+Handles centralized RAG operations including Smart Ingestion and Hybrid Retrieval.
+
+| Method | Description |
+|--------|-------------|
+| `ingest_text(text, config)` | Smart Chunking -> Entity Extraction -> Metadata Enrichment -> Vector Store |
+| `search(query, config)` | Entity Analysis -> Hybrid Search (Vector + Metadata) -> Context Formatting |
+
+### Features
+- **Smart Ingestion**: Uses DSPy to extract entities (Person, Org, Project) and stores them as metadata.
+- **Semantic Deduplication**: configurable logic (`dedup_threshold`, default 0.95) to prevent fuzzy duplicates using L2 distance checks before insertion. Uses `hashlib.sha256` for deterministic IDs to allow idempotent upserts.
+- **Hybrid Search**: Combines semantic search with metadata filtering. Supports `k` parameter for controlling context window.
+- **Robust Fallback**: Automatically falls back to native Chroma usage if LangChain embedding libraries are missing.
+- **Embeddings**: Defaults to `all-MiniLM-L6-v2` (SentenceTransformer) for local usage, falls back to `OpenAIEmbeddings` if available.
 
 ---
 

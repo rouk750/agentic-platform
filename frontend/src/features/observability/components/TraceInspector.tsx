@@ -1,12 +1,49 @@
 import { useState } from 'react';
-import { Code2, ArrowRightLeft, Database, ChevronRight, ChevronDown, Cpu, ArrowRight, ArrowLeft } from 'lucide-react';
+import {
+  Code2,
+  ArrowRightLeft,
+  Database,
+  ChevronRight,
+  ChevronDown,
+  Cpu,
+  ArrowRight,
+  ArrowLeft,
+} from 'lucide-react';
+
+interface StepData {
+  input?: unknown;
+  output?: unknown;
+  state?: Record<string, unknown>;
+  tokens?:
+    | {
+        input?: number;
+        output?: number;
+        total?: number;
+        input_tokens?: number;
+        output_tokens?: number;
+        total_tokens?: number;
+      }
+    | number;
+  _meta?: { tokens?: { input?: number; output?: number; total?: number } };
+}
 
 interface InspectorProps {
   stepId: string | null;
-  data: any | null; // StepSnapshot
+  data: StepData | null;
 }
 
-function Section({ title, icon: Icon, children, defaultOpen = true }: { title: string; icon: any; children: React.ReactNode; defaultOpen?: boolean }) {
+function Section({
+  title,
+  icon: Icon,
+  children,
+  defaultOpen = true,
+}: {
+  title: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon: any;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   return (
     <section className="bg-white rounded-lg border border-slate-200 overflow-hidden">
@@ -18,19 +55,19 @@ function Section({ title, icon: Icon, children, defaultOpen = true }: { title: s
           <Icon size={14} className="text-slate-500" />
           <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wide">{title}</h4>
         </div>
-        {isOpen ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
+        {isOpen ? (
+          <ChevronDown size={14} className="text-slate-400" />
+        ) : (
+          <ChevronRight size={14} className="text-slate-400" />
+        )}
       </button>
 
-      {isOpen && (
-        <div className="p-3">
-          {children}
-        </div>
-      )}
+      {isOpen && <div className="p-3">{children}</div>}
     </section>
   );
 }
 
-function DataDisplay({ data }: { data: any }) {
+function DataDisplay({ data }: { data: unknown }) {
   if (data === undefined || data === null) {
     return <span className="text-slate-400 italic text-xs">None</span>;
   }
@@ -43,11 +80,7 @@ function DataDisplay({ data }: { data: any }) {
     );
   }
 
-  return (
-    <div className="font-mono text-sm text-slate-700 whitespace-pre-wrap">
-      {String(data)}
-    </div>
-  );
+  return <div className="font-mono text-sm text-slate-700 whitespace-pre-wrap">{String(data)}</div>;
 }
 
 export default function TraceInspector({ stepId, data }: InspectorProps) {
@@ -77,7 +110,10 @@ export default function TraceInspector({ stepId, data }: InspectorProps) {
           <span className="text-slate-400 font-normal ml-2 text-xs font-mono">{stepId}</span>
         </h3>
         <div className="flex gap-1">
-          <button className="p-1.5 hover:bg-slate-100 rounded text-slate-500 transition-colors" title="State Diff">
+          <button
+            className="p-1.5 hover:bg-slate-100 rounded text-slate-500 transition-colors"
+            title="State Diff"
+          >
             <ArrowRightLeft size={16} />
           </button>
           <button
@@ -90,7 +126,6 @@ export default function TraceInspector({ stepId, data }: InspectorProps) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-
         {/* Token Usage Section */}
         {tokens && (
           <div className="grid grid-cols-3 gap-3 mb-4">
@@ -98,20 +133,26 @@ export default function TraceInspector({ stepId, data }: InspectorProps) {
               <span className="text-[10px] uppercase text-slate-400 font-semibold mb-1 flex items-center gap-1">
                 <ArrowRight size={10} /> Input
               </span>
-              <span className="text-lg font-bold text-slate-700">{tokens.input ?? tokens.input_tokens ?? 0}</span>
+              <span className="text-lg font-bold text-slate-700">
+                {typeof tokens === 'number' ? 0 : (tokens.input ?? tokens.input_tokens ?? 0)}
+              </span>
             </div>
             <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center justify-center">
               <span className="text-[10px] uppercase text-slate-400 font-semibold mb-1 flex items-center gap-1">
                 <ArrowLeft size={10} /> Output
               </span>
-              <span className="text-lg font-bold text-slate-700">{tokens.output ?? tokens.output_tokens ?? 0}</span>
+              <span className="text-lg font-bold text-slate-700">
+                {typeof tokens === 'number' ? 0 : (tokens.output ?? tokens.output_tokens ?? 0)}
+              </span>
             </div>
             <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm flex flex-col items-center justify-center relative overflow-hidden">
               <div className="absolute inset-0 bg-blue-50/50 z-0"></div>
               <span className="text-[10px] uppercase text-blue-500 font-semibold mb-1 flex items-center gap-1 relative z-10">
                 <Cpu size={10} /> Total
               </span>
-              <span className="text-lg font-bold text-blue-700 relative z-10">{tokens.total ?? tokens.total_tokens ?? 0}</span>
+              <span className="text-lg font-bold text-blue-700 relative z-10">
+                {typeof tokens === 'number' ? tokens : (tokens.total ?? tokens.total_tokens ?? 0)}
+              </span>
             </div>
           </div>
         )}

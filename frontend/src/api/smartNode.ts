@@ -1,4 +1,5 @@
 import axios from 'axios';
+import type { Example } from '../types/smartNode';
 
 const getBaseUrl = async () => {
   return 'http://localhost:8000/api';
@@ -20,14 +21,14 @@ export interface OptimizationPayload {
   node_id: string;
   goal: string;
   mode: string;
-  inputs: { name: string; desc: string }[];
+  inputs: { name: string; desc?: string }[];
   outputs: {
     name: string;
-    desc: string;
+    desc?: string;
     guardrail?: GuardrailConfig;
     guardrails?: GuardrailConfig[];
   }[];
-  examples: any[];
+  examples: Example[];
   llm_profile_id: number;
   metric: string;
   max_rounds?: number;

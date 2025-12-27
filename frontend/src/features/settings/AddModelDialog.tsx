@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import * as Dialog from '@radix-ui/react-dialog';
 import { X, Check, Loader2, AlertCircle } from 'lucide-react';
@@ -62,6 +62,18 @@ export function AddModelDialog({
 
   const selectedProvider = watch('provider');
 
+  const scanModels = useCallback(async () => {
+    setScanning(true);
+    let models: string[] = [];
+    if (selectedProvider === 'ollama') {
+      models = await scanOllamaModels();
+    } else if (selectedProvider === 'lmstudio') {
+      models = await scanLMStudioModels();
+    }
+    setScannedModels(models);
+    setScanning(false);
+  }, [selectedProvider]);
+
   // Reset form when dialog opens or modelToEdit changes
   useEffect(() => {
     if (open) {
@@ -106,21 +118,10 @@ export function AddModelDialog({
     } else {
       setScannedModels([]);
     }
-  }, [selectedProvider]);
-
-  const scanModels = async () => {
-    setScanning(true);
-    let models: string[] = [];
-    if (selectedProvider === 'ollama') {
-      models = await scanOllamaModels();
-    } else if (selectedProvider === 'lmstudio') {
-      models = await scanLMStudioModels();
-    }
-    setScannedModels(models);
-    setScanning(false);
-  };
+  }, [selectedProvider, scanModels]);
 
   const onTestConnection = async () => {
+    // eslint-disable-next-line react-hooks/incompatible-library
     const data = watch();
     if (!data.model_id) return;
 
@@ -139,9 +140,9 @@ export function AddModelDialog({
         const updatePayload: any = { ...data };
         if (!updatePayload.api_key) delete updatePayload.api_key;
 
-        await updateModel(modelToEdit.id, updatePayload);
+        await updateModel(modelToEdit.id, updatePayload as Partial<LLMProfile>);
       } else {
-        await createModel(data);
+        await createModel(data as unknown as Omit<LLMProfile, 'id' | 'created_at' | 'updated_at'>);
       }
       onModelAdded();
       onOpenChange(false);

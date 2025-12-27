@@ -1,4 +1,4 @@
-import { createContext, useContext, useRef, useCallback, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useRef, useCallback, type ReactNode, useEffect } from 'react';
 import { useRunStore } from '../store/runStore';
 import { toast } from 'sonner';
 
@@ -103,7 +103,7 @@ export function RuntimeProvider({ children }: RuntimeProviderProps) {
                 case 'token_usage':
                   addTokenUsage(data.node_id, data.usage);
                   break;
-                case 'node_active':
+                case 'node_active': {
                   addActiveNode(data.node_id);
                   incrementNodeExecution(data.node_id);
 
@@ -134,7 +134,8 @@ export function RuntimeProvider({ children }: RuntimeProviderProps) {
                     details: { nodeId: data.node_id },
                   });
                   break;
-                case 'node_finished':
+                }
+                case 'node_finished': {
                   if (data.data && data.data._iterator_metadata) {
                     const { node_id, current, total } = data.data._iterator_metadata;
                     updateIteratorProgress(node_id, current, total);
@@ -164,6 +165,7 @@ export function RuntimeProvider({ children }: RuntimeProviderProps) {
                     });
                   }
                   break;
+                }
                 case 'done':
                   setStatus('done');
                   addLog({ event: 'Execution Finished', level: 'info', details: {} });
@@ -210,7 +212,7 @@ export function RuntimeProvider({ children }: RuntimeProviderProps) {
                     addToolExecution(data.node_id, data.name);
                   }
                   break;
-                case 'interrupt':
+                case 'interrupt': {
                   setPaused(data.node_id);
 
                   const pausedCount = useRunStore.getState().nodeExecutionCounts[data.node_id] || 0;
@@ -236,6 +238,7 @@ export function RuntimeProvider({ children }: RuntimeProviderProps) {
                   });
                   toast.info(`Workflow paused at ${pausedLabel} for approval.`);
                   break;
+                }
               }
             } catch (err) {
               console.error('Error parsing WS message', err);
@@ -278,6 +281,10 @@ export function RuntimeProvider({ children }: RuntimeProviderProps) {
       setPaused,
       addTokenUsage,
       setGraphDefinition,
+      // Added missing dependencies to fix linter warning and manual memoization preservation error
+      completeNodeMessage,
+      incrementNodeExecution,
+      storeNodeInput,
     ]
   );
 

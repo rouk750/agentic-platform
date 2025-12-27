@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 // import { useNavigate } from 'react-router-dom';
-import { templateApi, AgentTemplate, AgentTemplateVersion } from '../api/templates';
+import { templateApi, type AgentTemplate, type AgentTemplateVersion } from '../api/templates';
 import {
   Trash2,
   History,
@@ -21,7 +21,7 @@ import { formatDistanceToNow } from 'date-fns';
 import AgentTemplateDialog from '../components/AgentTemplateDialog';
 
 import { useVersionHistory } from '../hooks/useVersionHistory';
-import { useSortAndFilter, SortOption } from '../hooks/useSortAndFilter';
+import { useSortAndFilter, type SortOption } from '../hooks/useSortAndFilter';
 import { useApiResource } from '../hooks/useApiResource';
 
 export default function AgentsPage() {
@@ -45,8 +45,8 @@ export default function AgentsPage() {
     },
     onAfterUpdate: (updated) => {
       // Refresh versions if this template's history is open
-      if (selectedTemplateId === updated.id) {
-        handleViewVersions(updated.id!); // Re-fetch versions for the updated template
+      if (selectedTemplateId === updated.id && updated.id) {
+        handleViewVersions(updated.id); // Re-fetch versions for the updated template
       }
     },
     onAfterDelete: (id) => {
@@ -126,8 +126,8 @@ export default function AgentsPage() {
   };
 
   const handleSaveTemplate = async (templateData: Partial<AgentTemplate>) => {
-    if (editingTemplate) {
-      await updateTemplate(editingTemplate.id!, templateData);
+    if (editingTemplate && editingTemplate.id) {
+      await updateTemplate(editingTemplate.id, templateData);
     } else {
       await createTemplate(templateData as AgentTemplate);
     }
@@ -146,7 +146,8 @@ export default function AgentsPage() {
   };
 
   const handleToggleArchive = async (template: AgentTemplate) => {
-    await updateTemplate(template.id!, { is_archived: !template.is_archived });
+    if (!template.id) return;
+    await updateTemplate(template.id, { is_archived: !template.is_archived });
   };
 
   // Wrapped handlers to match old signature or add specific logic
@@ -273,7 +274,7 @@ export default function AgentsPage() {
                       {template.is_archived ? <ArchiveRestore size={16} /> : <Archive size={16} />}
                     </button>
                     <button
-                      onClick={() => handleViewVersionsClick(template.id!)}
+                      onClick={() => template.id && handleViewVersionsClick(template.id)}
                       className={`p-2 rounded-lg transition-colors flex items-center gap-1.5 text-sm font-medium ${selectedTemplateId === template.id ? 'bg-blue-50 text-blue-700' : 'hover:bg-slate-50 text-slate-600'}`}
                     >
                       <History size={16} />
@@ -287,7 +288,7 @@ export default function AgentsPage() {
                       <Pencil size={16} />
                     </button>
                     <button
-                      onClick={() => handleDeleteTemplate(template.id!)}
+                      onClick={() => template.id && handleDeleteTemplate(template.id)}
                       className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors"
                       title="Delete"
                     >
@@ -335,7 +336,7 @@ export default function AgentsPage() {
                                   ({selectedVersionIds.size})
                                 </span>
                                 <button
-                                  onClick={() => handleBulkDelete(template.id!)}
+                                  onClick={() => template.id && handleBulkDelete(template.id)}
                                   className="flex items-center gap-1.5 px-2 py-1 bg-red-50 text-red-600 hover:bg-red-100 rounded-md text-xs font-medium transition-colors"
                                 >
                                   <Trash2 size={12} /> Delete
@@ -396,15 +397,17 @@ export default function AgentsPage() {
                                     )}
                                   </div>
                                   <span className="text-xs text-slate-500">
-                                    {new Date(version.created_at).toLocaleString()} (
-                                    {formatDistanceToNow(new Date(version.created_at))} ago)
+                                    {new Date(version.created_at || 0).toLocaleString()} (
+                                    {formatDistanceToNow(new Date(version.created_at || 0))} ago)
                                   </span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-1">
                                 {!isActive && (
                                   <button
-                                    onClick={() => handleRestoreVersion(template.id!, version.id)}
+                                    onClick={() =>
+                                      template.id && handleRestoreVersion(template.id, version.id)
+                                    }
                                     className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-blue-50 text-blue-600 rounded-md transition-colors text-xs font-medium border border-transparent hover:border-blue-100"
                                   >
                                     <RotateCcw size={14} /> Restore
@@ -417,7 +420,9 @@ export default function AgentsPage() {
                                 )}
 
                                 <button
-                                  onClick={() => handleToggleLock(template.id!, version)}
+                                  onClick={() =>
+                                    template.id && handleToggleLock(template.id, version)
+                                  }
                                   className={`p-1.5 rounded-md transition-colors ${version.is_locked ? 'text-amber-600 hover:bg-amber-50' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
                                   title={version.is_locked ? 'Unlock Version' : 'Lock Version'}
                                 >
@@ -425,7 +430,9 @@ export default function AgentsPage() {
                                 </button>
 
                                 <button
-                                  onClick={() => handleDeleteVersionClick(template.id!, version.id)}
+                                  onClick={() =>
+                                    template.id && handleDeleteVersionClick(template.id, version.id)
+                                  }
                                   disabled={version.is_locked || isActive}
                                   className={`p-1.5 rounded-md transition-colors ${version.is_locked || isActive ? 'text-slate-300 cursor-not-allowed' : 'text-slate-400 hover:text-red-500 hover:bg-red-50'}`}
                                   title={

@@ -26,6 +26,7 @@ import { SmartNode } from '../nodes/SmartNode';
 
 import IteratorNode from '../nodes/IteratorNode';
 import { SubgraphNode } from '../nodes/SubgraphNode';
+import ResourceEdge from '../edges/ResourceEdge';
 
 import { cleanNode, cleanEdge } from '../utils/flowUtils';
 
@@ -37,6 +38,10 @@ const nodeTypes = {
   smart_node: SmartNode,
   iterator: IteratorNode,
   subgraph: SubgraphNode,
+};
+
+const edgeTypes = {
+  resource: ResourceEdge,
 };
 
 function FlowEditorInstance() {
@@ -341,6 +346,7 @@ function FlowEditorInstance() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onDragOver={onDragOver}
         onDrop={onDrop}
         fitView

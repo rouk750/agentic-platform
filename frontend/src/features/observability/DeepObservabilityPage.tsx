@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Panel, PanelGroup, PanelResizeHandle } from 'react-resizable-panels';
 import { useRunStore } from '../../store/runStore';
-import { ArrowLeft, Play, RefreshCw, Trash2 } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 
 import ExecutionTimeline from './components/ExecutionTimeline';
 import TraceInspector from './components/TraceInspector';
@@ -11,15 +11,25 @@ import PromptPlayground from './components/PromptPlayground';
 interface StepSnapshot {
   id: string; // Unique UI ID
   node_id: string; // Backend Node ID
-  state: any;
+  state?: Record<string, unknown>;
   created_at: string;
   duration?: number;
-  tokens?: { input: number; output: number; total: number } | number; // Support both for backward compat
+  tokens?:
+    | { input: number; output: number; total: number }
+    | number
+    | {
+        input?: number;
+        output?: number;
+        total?: number;
+        input_tokens?: number;
+        output_tokens?: number;
+        total_tokens?: number;
+      };
   status: 'success' | 'error' | 'pending';
   label?: string;
   // allow flexible properties for input/output if we decide to map them at top level
-  input?: any;
-  output?: any;
+  input?: unknown;
+  output?: unknown;
 }
 
 export default function DeepObservabilityPage() {
@@ -32,27 +42,34 @@ export default function DeepObservabilityPage() {
   // Assuming runStore holds the active session.
 
   // Subscribe to store updates
-  const { nodeSnapshots, clearSnapshots, nodeLabels, tokenUsage } = useRunStore();
+  const { nodeSnapshots, clearSnapshots, nodeLabels } = useRunStore();
 
   // Transform snapshots to Timeline Steps
-  const [steps, setSteps] = useState<StepSnapshot[]>([]);
-
-  useEffect(() => {
+  const steps = useMemo(() => {
     // Flatten the dict of lists into a single chronological list
     const allSnapshots: StepSnapshot[] = [];
 
     Object.entries(nodeSnapshots).forEach(([nodeId, snapshots]) => {
-      snapshots.forEach((snap: any, index: number) => {
+      snapshots.forEach((snap: unknown, index: number) => {
+        // Type assertion for snapshot structure
+        const typedSnap = snap as Record<string, unknown> & {
+          created_at?: string;
+          state?: Record<string, unknown>;
+          _meta?: { tokens?: { input: number; output: number; total: number } | number };
+          input?: unknown;
+          output?: unknown;
+        };
+
         allSnapshots.push({
-          id: `${nodeId}-${snap.created_at || Date.now()}-${index}`, // Unique ID
+          id: `${nodeId}-${typedSnap.created_at || Date.now()}-${index}`, // Unique ID
           node_id: nodeId,
-          state: snap.state,
-          created_at: snap.created_at || new Date().toISOString(),
+          state: typedSnap.state,
+          created_at: typedSnap.created_at || new Date().toISOString(),
           status: 'success',
           label: nodeLabels[nodeId] || nodeId,
-          tokens: snap._meta?.tokens, // Pass full token object if available
-          input: snap.state?.input ?? snap.input, // Explicitly map input if available
-          output: snap.state?.output ?? snap.output, // Explicitly map output if available
+          tokens: typedSnap._meta?.tokens, // Pass full token object if available
+          input: typedSnap.state?.input ?? typedSnap.input, // Explicitly map input if available
+          output: typedSnap.state?.output ?? typedSnap.output, // Explicitly map output if available
           // Use config for extra metadata if needed
         });
       });
@@ -64,8 +81,8 @@ export default function DeepObservabilityPage() {
       (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     );
 
-    setSteps(allSnapshots);
-  }, [nodeSnapshots]);
+    return allSnapshots;
+  }, [nodeSnapshots, nodeLabels]);
 
   // Find the selected snapshot data
   const selectedSnapshot = steps.find((s) => s.id === selectedStepId) || null;

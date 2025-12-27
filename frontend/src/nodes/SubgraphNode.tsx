@@ -16,8 +16,8 @@ type SubgraphNodeType = Node<SubgraphNodeData>;
 export function SubgraphNode({ id, data, selected }: NodeProps<SubgraphNodeType>) {
   const { id: currentFlowId } = useParams();
   const { updateNodeData } = useReactFlow();
-  const activeNodeId = useRunStore((state) => state.activeNodeId);
-  const isActive = id === activeNodeId;
+  const activeNodeIds = useRunStore((state) => state.activeNodeIds);
+  const isActive = activeNodeIds.includes(id);
 
   // Local state for list of flows
   const [flows, setFlows] = useState<Flow[]>([]);

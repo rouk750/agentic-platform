@@ -56,7 +56,6 @@ Payload for `POST /api/smart-nodes/optimize`.
 *   `goal` (str): Improvement objective.
 *   `mode` (str): "Predict" vs "ChainOfThought".
 *   `inputs` / `outputs`: List of field definitions.
-*   `examples`: List of `DSPyExample` (input/output pairs).
 *   `metric` (str): "semantic" or "exact_match".
 *   `max_rounds` (int).
 
@@ -64,3 +63,13 @@ Payload for `POST /api/smart-nodes/optimize`.
 *   `status` (str)
 *   `compiled_program_path` (str)
 *   `score` (float)
+
+## 5. RAG Configuration (`chroma_config.py`)
+
+### `ChromaNodeConfig`
+Configuration for `RAGNode`.
+*   `mode` (enum): "local" | "server".
+*   `path` (str, optional): For local mode.
+*   `host` (str, optional): For server mode.
+*   `port` (int, optional): For server mode.
+*   `collection_name` (str).

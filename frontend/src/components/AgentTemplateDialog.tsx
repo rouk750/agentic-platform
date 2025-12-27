@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
 import { X, Bot, Sparkles, Loader2, Save, Plus, Trash2, Box, Brain, Zap } from 'lucide-react';
 import { useForm, useFieldArray } from 'react-hook-form';
-import { AgentTemplate } from '../api/templates';
+import type { AgentTemplate } from '../api/templates';
 import { toast } from 'sonner';
 import { getModels } from '../api/settings';
 import type { LLMProfile } from '../types/settings';
 import { ToolSelector } from '../nodes/ToolSelector';
 import type { SchemaField } from '../types/common';
-import { getAvailableGuardrails, type GuardrailDefinition } from '../api/smartNode';
 
 interface AgentTemplateDialogProps {
   isOpen: boolean;
@@ -45,7 +44,6 @@ export default function AgentTemplateDialog({
   const [modelsLoading, setModelsLoading] = useState(false);
   const [models, setModels] = useState<LLMProfile[]>([]);
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
-  const [availableGuardrails, setAvailableGuardrails] = useState<GuardrailDefinition[]>([]);
 
   // Agent Form
   const agentForm = useForm<AgentFormData>({
@@ -99,10 +97,7 @@ export default function AgentTemplateDialog({
   useEffect(() => {
     if (isOpen) {
       setModelsLoading(true);
-      Promise.all([
-        getModels().then(setModels),
-        getAvailableGuardrails().then(setAvailableGuardrails),
-      ]).finally(() => setModelsLoading(false));
+      Promise.all([getModels().then(setModels)]).finally(() => setModelsLoading(false));
 
       if (initialData) {
         setName(initialData.name);
